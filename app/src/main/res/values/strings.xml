@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Bitcoin Glyph</string>
+    <string name="bitcoin_tracker">Bitcoin Tracker</string>
+    <string name="toy_description">Track Bitcoin price with live updates</string>
+</resources> 

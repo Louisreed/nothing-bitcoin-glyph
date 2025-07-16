@@ -1,0 +1,11 @@
+PLACEHOLDER FILE
+
+This file is a placeholder for the actual gradle-wrapper.jar file.
+
+The gradle-wrapper.jar is a binary file that gets downloaded automatically when you run:
+./gradlew wrapper
+
+Or you can initialize it by running:
+gradle wrapper
+
+This JAR file contains the Gradle wrapper runtime and is required for the build system to work properly. 
