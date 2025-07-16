@@ -151,16 +151,12 @@ public class BitcoinGlyphToyService extends Service {
             return;
         }
         
-        try {
-            // Create a frame for price display (simplified - just light up some zones)
-            GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
-            GlyphFrame frame = builder.buildChannelA().buildChannelB().build();
-            mGlyphManager.animate(frame);
-            
-            Log.d(TAG, "Displaying price: $" + String.format("%.0f", currentPrice));
-        } catch (GlyphException e) {
-            Log.e(TAG, "Failed to display price: " + e.getMessage());
-        }
+        // Create a frame for price display (simplified - just light up some zones)
+        GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
+        GlyphFrame frame = builder.buildChannelA().buildChannelB().build();
+        mGlyphManager.animate(frame);
+        
+        Log.d(TAG, "Displaying price: $" + String.format("%.0f", currentPrice));
     }
     
     private void displayBitcoinIcon() {
@@ -169,16 +165,12 @@ public class BitcoinGlyphToyService extends Service {
             return;
         }
         
-        try {
-            // Create a frame for Bitcoin icon display
-            GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
-            GlyphFrame frame = builder.buildChannelC().build();
-            mGlyphManager.toggle(frame);
-            
-            Log.d(TAG, "Displaying Bitcoin icon");
-        } catch (GlyphException e) {
-            Log.e(TAG, "Failed to display Bitcoin icon: " + e.getMessage());
-        }
+        // Create a frame for Bitcoin icon display
+        GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
+        GlyphFrame frame = builder.buildChannelC().build();
+        mGlyphManager.toggle(frame);
+        
+        Log.d(TAG, "Displaying Bitcoin icon");
     }
     
     public void onLongPress() {
