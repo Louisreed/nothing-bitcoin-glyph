@@ -18,6 +18,13 @@
         android:theme="@style/Theme.BitcoinGlyph"
         tools:targetApi="31">
 
+        <!-- Nothing Glyph API Key -->
+        <!-- For testing: use "test" and enable debug mode with: adb shell settings put global nt_glyph_interface_debug_enable 1 -->
+        <!-- For production: get real API key from https://intl.nothing.tech/pages/glyph-developer-kit -->
+        <meta-data
+            android:name="NothingKey"
+            android:value="test" />
+
         <!-- Main Activity -->
         <activity
             android:name=".MainActivity"
