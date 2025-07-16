@@ -107,12 +107,25 @@ nothing-bitcoin-glyph/
 
 ### Getting the Nothing Glyph SDK
 
-To build this project, you need the `GlyphMatrixSDK.aar` file from Nothing:
+To build this project, you need the `GlyphMatrixSDK.aar` file from Nothing's official repository:
 
-1. Apply to Nothing's developer program
-2. Download the GlyphMatrixSDK
+**Quick Setup:**
+
+```bash
+./download_sdk.sh
+```
+
+**Manual Setup:**
+
+1. Download from: https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit
+2. Get the `GlyphMatrixSDK.aar` file
 3. Place the AAR file in the `libs/` directory
 4. The project will then build successfully
+
+**API Key Configuration:**
+
+- For development: Use `"test"` as API key and enable debug mode
+- For production: Apply for real API key at https://intl.nothing.tech/pages/glyph-developer-kit
 
 ## Contributing
 
@@ -171,4 +184,4 @@ For issues and questions:
 
 ---
 
-**Note**: This project requires the Nothing GlyphMatrixSDK.aar file which must be obtained separately from Nothing's developer program. The project will not build without this file.
+**Note**: This project requires the Nothing GlyphMatrixSDK.aar file which can be obtained from the official Nothing Developer Programme repository at https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit. Use the included `download_sdk.sh` script for easy setup.

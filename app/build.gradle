@@ -43,8 +43,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.10.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     
-    // Nothing Glyph SDK
-    implementation files('libs/KetchumSDK_Community_20250319.jar')
+    // Nothing Glyph SDK - Official AAR from Nothing Developer Programme
+    implementation files('libs/GlyphMatrixSDK.aar')
     
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

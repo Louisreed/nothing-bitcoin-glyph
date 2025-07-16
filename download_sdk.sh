@@ -1,60 +1,24 @@
 #!/bin/bash
 
-# Download Nothing GlyphMatrixSDK.aar from official repository
-# This script helps automate the SDK download process
+# Download Nothing Glyph SDK from official Nothing Developer Programme repository
+# This script downloads the official GlyphMatrixSDK.aar file required for the Bitcoin Glyph Toy
 
-SDK_URL="https://raw.githubusercontent.com/Nothing-Developer-Programme/Glyph-Developer-Kit/main/sdk/KetchumSDK_Community_20250319.jar"
-SDK_DIR="libs"
-SDK_FILE="$SDK_DIR/KetchumSDK_Community_20250319.jar"
-
-echo "🚀 Downloading Nothing Glyph SDK..."
-echo "📍 From: $SDK_URL"
-echo "📁 To: $SDK_FILE"
-echo ""
+echo "Downloading Nothing Glyph SDK from official repository..."
 
 # Create libs directory if it doesn't exist
-mkdir -p "$SDK_DIR"
+mkdir -p libs
 
-# Remove existing placeholder file
-if [ -f "$SDK_FILE" ]; then
-    echo "🗑️  Removing existing file..."
-    rm "$SDK_FILE"
-fi
+# Download the official GlyphMatrixSDK.aar file
+curl -L -o libs/GlyphMatrixSDK.aar https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit/raw/main/GlyphMatrixSDK.aar
 
-# Download the SDK
-echo "⬇️  Downloading SDK..."
-if curl -L -o "$SDK_FILE" "$SDK_URL"; then
-    echo "✅ Download successful!"
-    echo "📦 SDK file saved to: $SDK_FILE"
-    
-    # Verify the file
-    if [ -f "$SDK_FILE" ]; then
-        file_size=$(stat -f%z "$SDK_FILE" 2>/dev/null || stat -c%s "$SDK_FILE" 2>/dev/null)
-        echo "📊 File size: $file_size bytes"
-        
-        # Check if it's actually a JAR file
-        if file "$SDK_FILE" | grep -q "Java archive"; then
-            echo "✅ File appears to be a valid JAR file"
-        else
-            echo "⚠️  Warning: File may not be a valid JAR file"
-        fi
-    fi
+# Check if download was successful
+if [ -f "libs/GlyphMatrixSDK.aar" ]; then
+    echo "✅ GlyphMatrixSDK.aar downloaded successfully!"
+    echo "File size: $(ls -lh libs/GlyphMatrixSDK.aar | awk '{print $5}')"
+    echo ""
+    echo "The SDK is now ready for use. You can build the project with:"
+    echo "  ./gradlew build"
 else
-    echo "❌ Download failed!"
-    echo "Please try downloading manually from:"
-    echo "https://github.com/Nothing-Developer-Programme/Glyph-Developer-Kit"
+    echo "❌ Failed to download GlyphMatrixSDK.aar"
     exit 1
-fi
-
-echo ""
-echo "📋 Next steps:"
-echo "1. Get API key from Nothing Developer Program"
-echo "2. Add API key to AndroidManifest.xml"
-echo "3. Build your project!"
-echo ""
-echo "🔧 For testing without API key:"
-echo "   adb shell settings put global nt_glyph_interface_debug_enable 1"
-echo "   Use android:value=\"test\" in AndroidManifest.xml"
-echo ""
-echo "🌐 Apply for API key at:"
-echo "   https://intl.nothing.tech/pages/glyph-developer-kit" 
+fi 
