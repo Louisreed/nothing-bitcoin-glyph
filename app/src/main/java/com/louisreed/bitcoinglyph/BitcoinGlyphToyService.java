@@ -37,22 +37,14 @@ public class BitcoinGlyphToyService extends Service {
             // Register with the appropriate device
             try {
                 String deviceType = "Unknown";
-                if (Common.is20111()) {
-                    mGlyphManager.register(Glyph.DEVICE_20111);
-                    deviceType = "Phone 1 (20111)";
-                } else if (Common.is22111()) {
-                    mGlyphManager.register(Glyph.DEVICE_22111);
-                    deviceType = "Phone 2 (22111)";
-                } else if (Common.is23111()) {
-                    mGlyphManager.register(Glyph.DEVICE_23111);
-                    deviceType = "Phone 2a (23111)";
-                } else if (Common.is23113()) {
-                    mGlyphManager.register(Glyph.DEVICE_23113);
-                    deviceType = "Phone 2a Plus (23113)";
+                if (Common.is24111()) {
+                    mGlyphManager.register(Glyph.DEVICE_24111);
+                    deviceType = "Phone 3 (24111)";
                 } else {
-                    Log.w(TAG, "Unknown device type - trying default registration");
-                    mGlyphManager.register(Glyph.DEVICE_20111); // Try default
-                    deviceType = "Default (20111)";
+                    Log.w(TAG, "Unsupported device type - this app only supports Nothing Phone 3");
+                    Log.w(TAG, "Trying Phone 3 registration anyway...");
+                    mGlyphManager.register(Glyph.DEVICE_24111); // Try Phone 3 anyway
+                    deviceType = "Phone 3 (24111) - Forced";
                 }
                 
                 Log.i(TAG, "Registered device: " + deviceType);
@@ -252,16 +244,16 @@ public class BitcoinGlyphToyService extends Service {
             // Create a frame for price display - different pattern from icon
             GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
             
-            // Light up different zones to show this is price mode
+            // Light up different zones to show this is price mode (Phone 3 pattern)
             GlyphFrame frame = builder
-                .buildChannelA()
-                .buildChannelC()
-                .buildChannelE()
+                .buildChannelB()    // B1-B5 only for price mode
+                .buildPeriod(2000)  // Longer duration for price
+                .buildCycles(1)     // No repetition for price
                 .build();
             
             mGlyphManager.animate(frame);
             
-            Log.d(TAG, "Displaying price: $" + String.format("%.0f", currentPrice));
+            Log.i(TAG, "Displaying price: $" + String.format("%.0f", currentPrice));
         } catch (Exception e) {
             Log.e(TAG, "Failed to display price: " + e.getMessage());
         }
@@ -279,40 +271,50 @@ public class BitcoinGlyphToyService extends Service {
         }
         
         try {
-            Log.i(TAG, "Creating GlyphFrame...");
-            // Create a frame for Bitcoin icon display - light up multiple zones for visibility
+            Log.i(TAG, "Creating GlyphFrame for Nothing Phone 3...");
             GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
             Log.i(TAG, "Got GlyphFrame builder");
             
-            // Try a simple single channel first to test basic functionality
+            // Create a Bitcoin-like pattern using Phone 3 glyph zones
+            // Phone 3 has A1-A11, B1-B5, C1-C20 zones
             GlyphFrame frame = builder
-                .buildChannelA()
+                .buildChannelA()    // A1-A11 (camera strip)
+                .buildChannelB()    // B1-B5 (top section)
+                .buildChannelC()    // C1-C20 (main body)
+                .buildPeriod(1000)  // 1 second on duration
+                .buildCycles(3)     // Repeat 3 times
+                .buildInterval(500) // 0.5 second between cycles
                 .build();
             
-            Log.i(TAG, "Built GlyphFrame with channel A only");
+            Log.i(TAG, "Built GlyphFrame with all Phone 3 channels");
             
-            // Use animate instead of toggle for better visibility
+            // Use animate for breathing effect
             mGlyphManager.animate(frame);
-            
             Log.i(TAG, "*** BITCOIN ICON ANIMATION SENT SUCCESSFULLY ***");
             
-            // Also try toggle as a fallback
-            Log.i(TAG, "Trying toggle as well...");
-            mGlyphManager.toggle(frame);
-            
-            Log.i(TAG, "*** TOGGLE COMMAND SENT ***");
         } catch (Exception e) {
             Log.e(TAG, "*** FAILED TO DISPLAY BITCOIN ICON ***");
             Log.e(TAG, "Error: " + e.getMessage());
             e.printStackTrace();
             
-            // Try turning on all zones at once as a test
+            // Fallback: try simple toggle
             try {
-                Log.i(TAG, "Trying turnOn() method...");
-                mGlyphManager.turnOn();
-                Log.i(TAG, "TurnOn command sent");
+                Log.i(TAG, "Fallback: Trying simple toggle...");
+                GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
+                GlyphFrame simpleFrame = builder.buildChannelA().build();
+                mGlyphManager.toggle(simpleFrame);
+                Log.i(TAG, "Simple toggle sent");
             } catch (Exception e2) {
-                Log.e(TAG, "TurnOn also failed: " + e2.getMessage());
+                Log.e(TAG, "Simple toggle also failed: " + e2.getMessage());
+                
+                // Last resort: try turnOn()
+                try {
+                    Log.i(TAG, "Last resort: Trying turnOn() method...");
+                    mGlyphManager.turnOn();
+                    Log.i(TAG, "TurnOn command sent");
+                } catch (Exception e3) {
+                    Log.e(TAG, "TurnOn also failed: " + e3.getMessage());
+                }
             }
         }
     }
