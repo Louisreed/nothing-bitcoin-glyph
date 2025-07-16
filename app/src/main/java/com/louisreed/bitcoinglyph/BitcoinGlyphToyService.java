@@ -306,15 +306,7 @@ public class BitcoinGlyphToyService extends Service {
                 Log.i(TAG, "Simple toggle sent");
             } catch (Exception e2) {
                 Log.e(TAG, "Simple toggle also failed: " + e2.getMessage());
-                
-                // Last resort: try turnOn()
-                try {
-                    Log.i(TAG, "Last resort: Trying turnOn() method...");
-                    mGlyphManager.turnOn();
-                    Log.i(TAG, "TurnOn command sent");
-                } catch (Exception e3) {
-                    Log.e(TAG, "TurnOn also failed: " + e3.getMessage());
-                }
+                Log.e(TAG, "All display methods failed - glyph service may not be available");
             }
         }
     }
