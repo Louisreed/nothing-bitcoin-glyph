@@ -7,7 +7,6 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="com.nothing.ketchum.permission.ENABLE"/>
     <uses-permission android:name="com.nothing.glyph.permission.ENABLE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
@@ -47,8 +46,7 @@
         <service 
             android:name=".BitcoinGlyphToyService"
             android:exported="true"
-            android:enabled="true"
-            android:foregroundServiceType="none">
+            android:enabled="true">
             <intent-filter>
                 <action android:name="com.nothing.glyph.TOY"/>
                 <category android:name="android.intent.category.DEFAULT"/>
