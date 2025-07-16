@@ -30,39 +30,54 @@ public class BitcoinGlyphToyService extends Service {
     private GlyphManager.Callback mCallback = new GlyphManager.Callback() {
         @Override
         public void onServiceConnected(ComponentName componentName) {
-            Log.d(TAG, "Glyph service connected");
+            Log.i(TAG, "*** GLYPH SERVICE CONNECTED ***");
+            Log.i(TAG, "Component: " + componentName);
             isServiceConnected = true;
             
             // Register with the appropriate device
             try {
+                String deviceType = "Unknown";
                 if (Common.is20111()) {
                     mGlyphManager.register(Glyph.DEVICE_20111);
+                    deviceType = "Phone 1 (20111)";
                 } else if (Common.is22111()) {
                     mGlyphManager.register(Glyph.DEVICE_22111);
+                    deviceType = "Phone 2 (22111)";
                 } else if (Common.is23111()) {
                     mGlyphManager.register(Glyph.DEVICE_23111);
+                    deviceType = "Phone 2a (23111)";
                 } else if (Common.is23113()) {
                     mGlyphManager.register(Glyph.DEVICE_23113);
+                    deviceType = "Phone 2a Plus (23113)";
+                } else {
+                    Log.w(TAG, "Unknown device type - trying default registration");
+                    mGlyphManager.register(Glyph.DEVICE_20111); // Try default
+                    deviceType = "Default (20111)";
                 }
                 
+                Log.i(TAG, "Registered device: " + deviceType);
+                
                 mGlyphManager.openSession();
-                Log.d(TAG, "Glyph session opened");
+                Log.i(TAG, "*** GLYPH SESSION OPENED SUCCESSFULLY ***");
                 
                 // Show initial Bitcoin icon
                 displayBitcoinIcon();
                 
             } catch (GlyphException e) {
-                Log.e(TAG, "Failed to initialize glyph: " + e.getMessage());
+                Log.e(TAG, "*** GLYPH INITIALIZATION FAILED: " + e.getMessage() + " ***");
+                e.printStackTrace();
             }
         }
         
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
-            Log.d(TAG, "Glyph service disconnected");
+            Log.w(TAG, "*** GLYPH SERVICE DISCONNECTED ***");
+            Log.w(TAG, "Component: " + componentName);
             isServiceConnected = false;
             try {
                 if (mGlyphManager != null) {
                     mGlyphManager.closeSession();
+                    Log.i(TAG, "Glyph session closed");
                 }
             } catch (GlyphException e) {
                 Log.e(TAG, "Failed to close glyph session: " + e.getMessage());
@@ -73,51 +88,54 @@ public class BitcoinGlyphToyService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.d(TAG, "Bitcoin Glyph Toy Service created");
+        Log.i(TAG, "*** BITCOIN GLYPH TOY SERVICE CREATED ***");
         
         mainHandler = new Handler(Looper.getMainLooper());
         
         // Initialize Glyph Manager
+        Log.i(TAG, "Initializing GlyphManager...");
         mGlyphManager = GlyphManager.getInstance(getApplicationContext());
         mGlyphManager.init(mCallback);
+        Log.i(TAG, "GlyphManager initialization started");
         
         startPriceUpdates();
         
         // Log service creation to help with debugging
-        Log.i(TAG, "Bitcoin Glyph Toy Service successfully created and initialized");
+        Log.i(TAG, "*** SERVICE INITIALIZATION COMPLETE ***");
         Log.i(TAG, "Service package: " + getPackageName());
         Log.i(TAG, "Service class: " + getClass().getName());
     }
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d(TAG, "Service started with intent: " + (intent != null ? intent.getAction() : "null"));
+        Log.i(TAG, "=== SERVICE STARTED ===");
+        Log.i(TAG, "Intent: " + (intent != null ? intent.toString() : "null"));
+        Log.i(TAG, "Action: " + (intent != null ? intent.getAction() : "null"));
+        Log.i(TAG, "Flags: " + flags + ", StartId: " + startId);
+        
+        if (intent != null && intent.getExtras() != null) {
+            Log.i(TAG, "Intent extras: " + intent.getExtras().toString());
+        }
         
         // Handle glyph toy specific intents
         if (intent != null) {
             String action = intent.getAction();
             if ("com.nothing.glyph.TOY".equals(action)) {
-                Log.d(TAG, "Glyph toy action received");
-                // This is called when the glyph toy is activated
+                Log.i(TAG, "*** GLYPH TOY ACTIVATION ***");
                 handleGlyphToyActivation();
             } else if ("com.nothing.glyph.TOY_LONGPRESS".equals(action)) {
-                Log.d(TAG, "Glyph toy long press received");
-                // Handle long press - toggle between icon and price
+                Log.i(TAG, "*** GLYPH TOY LONG PRESS ***");
                 toggleDisplay();
             } else if ("android.intent.action.BOOT_COMPLETED".equals(action) ||
                        "android.intent.action.MY_PACKAGE_REPLACED".equals(action) ||
                        "android.intent.action.PACKAGE_REPLACED".equals(action)) {
-                Log.d(TAG, "System startup or package replaced - registering service");
-                // Service is being started after boot or package update
-                // This helps with service discovery
+                Log.i(TAG, "System startup or package replaced - registering service");
             } else {
-                Log.d(TAG, "Service started with action: " + action);
-                // Fallback: try to activate the glyph display
+                Log.i(TAG, "*** UNKNOWN ACTION: " + action + " - trying activation ***");
                 handleGlyphToyActivation();
             }
         } else {
-            Log.d(TAG, "Service started without specific intent");
-            // Fallback: try to activate the glyph display
+            Log.i(TAG, "*** NO INTENT - trying activation ***");
             handleGlyphToyActivation();
         }
         
@@ -154,30 +172,46 @@ public class BitcoinGlyphToyService extends Service {
     }
     
     private void handleGlyphToyActivation() {
-        Log.d(TAG, "Glyph toy activated");
-        // This is called when the user activates the glyph toy
+        Log.i(TAG, "*** HANDLING GLYPH TOY ACTIVATION ***");
+        Log.i(TAG, "Service connected: " + isServiceConnected);
+        Log.i(TAG, "GlyphManager exists: " + (mGlyphManager != null));
+        
         if (isServiceConnected) {
+            Log.i(TAG, "Service connected - displaying Bitcoin icon");
             displayBitcoinIcon();
         } else {
-            Log.w(TAG, "Glyph service not connected yet, initializing...");
+            Log.w(TAG, "*** GLYPH SERVICE NOT CONNECTED - INITIALIZING ***");
             // Try to initialize the glyph manager if not already done
             if (mGlyphManager == null) {
+                Log.i(TAG, "Creating new GlyphManager instance");
                 mGlyphManager = GlyphManager.getInstance(getApplicationContext());
+                mGlyphManager.init(mCallback);
+            } else {
+                Log.i(TAG, "GlyphManager exists but not connected - reinitializing");
                 mGlyphManager.init(mCallback);
             }
         }
     }
     
     private void toggleDisplay() {
-        Log.d(TAG, "Toggling display mode");
+        Log.i(TAG, "*** TOGGLING DISPLAY MODE ***");
+        Log.i(TAG, "Current mode: " + (isShowingPrice ? "PRICE" : "ICON"));
+        
         isShowingPrice = !isShowingPrice;
+        
+        Log.i(TAG, "New mode: " + (isShowingPrice ? "PRICE" : "ICON"));
+        Log.i(TAG, "Service connected: " + isServiceConnected);
         
         if (isServiceConnected) {
             if (isShowingPrice) {
+                Log.i(TAG, "Switching to price display");
                 displayPrice();
             } else {
+                Log.i(TAG, "Switching to icon display");
                 displayBitcoinIcon();
             }
+        } else {
+            Log.e(TAG, "*** CANNOT TOGGLE - SERVICE NOT CONNECTED ***");
         }
     }
     
@@ -234,30 +268,52 @@ public class BitcoinGlyphToyService extends Service {
     }
     
     private void displayBitcoinIcon() {
+        Log.i(TAG, "*** DISPLAYING BITCOIN ICON ***");
+        Log.i(TAG, "Service connected: " + isServiceConnected);
+        Log.i(TAG, "GlyphManager exists: " + (mGlyphManager != null));
+        
         if (!isServiceConnected || mGlyphManager == null) {
-            Log.w(TAG, "Glyph service not connected, cannot display icon");
+            Log.e(TAG, "*** CANNOT DISPLAY ICON - SERVICE NOT READY ***");
+            Log.e(TAG, "Service connected: " + isServiceConnected + ", GlyphManager: " + (mGlyphManager != null));
             return;
         }
         
         try {
+            Log.i(TAG, "Creating GlyphFrame...");
             // Create a frame for Bitcoin icon display - light up multiple zones for visibility
             GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
+            Log.i(TAG, "Got GlyphFrame builder");
             
-            // Light up the glyph zones to create a visible Bitcoin-like pattern
+            // Try a simple single channel first to test basic functionality
             GlyphFrame frame = builder
                 .buildChannelA()
-                .buildChannelB()
-                .buildChannelC()
-                .buildChannelD()
-                .buildChannelE()
                 .build();
+            
+            Log.i(TAG, "Built GlyphFrame with channel A only");
             
             // Use animate instead of toggle for better visibility
             mGlyphManager.animate(frame);
             
-            Log.d(TAG, "Bitcoin icon displayed successfully");
+            Log.i(TAG, "*** BITCOIN ICON ANIMATION SENT SUCCESSFULLY ***");
+            
+            // Also try toggle as a fallback
+            Log.i(TAG, "Trying toggle as well...");
+            mGlyphManager.toggle(frame);
+            
+            Log.i(TAG, "*** TOGGLE COMMAND SENT ***");
         } catch (Exception e) {
-            Log.e(TAG, "Failed to display Bitcoin icon: " + e.getMessage());
+            Log.e(TAG, "*** FAILED TO DISPLAY BITCOIN ICON ***");
+            Log.e(TAG, "Error: " + e.getMessage());
+            e.printStackTrace();
+            
+            // Try turning on all zones at once as a test
+            try {
+                Log.i(TAG, "Trying turnOn() method...");
+                mGlyphManager.turnOn();
+                Log.i(TAG, "TurnOn command sent");
+            } catch (Exception e2) {
+                Log.e(TAG, "TurnOn also failed: " + e2.getMessage());
+            }
         }
     }
     
