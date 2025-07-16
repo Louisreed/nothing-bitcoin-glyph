@@ -110,7 +110,15 @@ public class BitcoinGlyphToyService extends Service {
                 Log.d(TAG, "System startup or package replaced - registering service");
                 // Service is being started after boot or package update
                 // This helps with service discovery
+            } else {
+                Log.d(TAG, "Service started with action: " + action);
+                // Fallback: try to activate the glyph display
+                handleGlyphToyActivation();
             }
+        } else {
+            Log.d(TAG, "Service started without specific intent");
+            // Fallback: try to activate the glyph display
+            handleGlyphToyActivation();
         }
         
         return START_STICKY;
@@ -150,6 +158,13 @@ public class BitcoinGlyphToyService extends Service {
         // This is called when the user activates the glyph toy
         if (isServiceConnected) {
             displayBitcoinIcon();
+        } else {
+            Log.w(TAG, "Glyph service not connected yet, initializing...");
+            // Try to initialize the glyph manager if not already done
+            if (mGlyphManager == null) {
+                mGlyphManager = GlyphManager.getInstance(getApplicationContext());
+                mGlyphManager.init(mCallback);
+            }
         }
     }
     
@@ -199,12 +214,23 @@ public class BitcoinGlyphToyService extends Service {
             return;
         }
         
-        // Create a frame for price display (simplified - just light up some zones)
-        GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
-        GlyphFrame frame = builder.buildChannelA().buildChannelB().build();
-        mGlyphManager.animate(frame);
-        
-        Log.d(TAG, "Displaying price: $" + String.format("%.0f", currentPrice));
+        try {
+            // Create a frame for price display - different pattern from icon
+            GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
+            
+            // Light up different zones to show this is price mode
+            GlyphFrame frame = builder
+                .buildChannelA()
+                .buildChannelC()
+                .buildChannelE()
+                .build();
+            
+            mGlyphManager.animate(frame);
+            
+            Log.d(TAG, "Displaying price: $" + String.format("%.0f", currentPrice));
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to display price: " + e.getMessage());
+        }
     }
     
     private void displayBitcoinIcon() {
@@ -213,22 +239,30 @@ public class BitcoinGlyphToyService extends Service {
             return;
         }
         
-        // Create a frame for Bitcoin icon display
-        GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
-        GlyphFrame frame = builder.buildChannelC().build();
-        mGlyphManager.toggle(frame);
-        
-        Log.d(TAG, "Displaying Bitcoin icon");
+        try {
+            // Create a frame for Bitcoin icon display - light up multiple zones for visibility
+            GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
+            
+            // Light up the glyph zones to create a visible Bitcoin-like pattern
+            GlyphFrame frame = builder
+                .buildChannelA()
+                .buildChannelB()
+                .buildChannelC()
+                .buildChannelD()
+                .buildChannelE()
+                .build();
+            
+            // Use animate instead of toggle for better visibility
+            mGlyphManager.animate(frame);
+            
+            Log.d(TAG, "Bitcoin icon displayed successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to display Bitcoin icon: " + e.getMessage());
+        }
     }
     
     public void onLongPress() {
         Log.d(TAG, "Long press detected - toggling display mode");
-        isShowingPrice = !isShowingPrice;
-        
-        if (isShowingPrice) {
-            displayPrice();
-        } else {
-            displayBitcoinIcon();
-        }
+        toggleDisplay();
     }
 } 

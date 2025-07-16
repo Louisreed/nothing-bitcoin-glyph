@@ -26,10 +26,11 @@ public class MainActivity extends AppCompatActivity {
         // Start the glyph toy service to make it discoverable
         try {
             Intent serviceIntent = new Intent(this, BitcoinGlyphToyService.class);
-            startService(serviceIntent);
-            Log.d(TAG, "Bitcoin Glyph Toy Service started");
+            // Don't auto-start the service - let the glyph system manage it
+            // startService(serviceIntent);
+            Log.d(TAG, "Bitcoin Glyph Toy Service ready for glyph system");
         } catch (Exception e) {
-            Log.e(TAG, "Failed to start Bitcoin Glyph Toy Service: " + e.getMessage());
+            Log.e(TAG, "Failed to prepare Bitcoin Glyph Toy Service: " + e.getMessage());
         }
     }
 } 
