@@ -1,4 +1,4 @@
-# Bitcoin Glyph Toy for Nothing Phone
+# Bitcoin Glyph Toy for Nothing Phone 3
 
 A Bitcoin price tracker toy for Nothing phones that displays live Bitcoin prices and a Bitcoin icon on the phone's Glyph interface.
 
