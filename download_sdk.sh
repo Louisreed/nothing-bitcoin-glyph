@@ -3,11 +3,11 @@
 # Download Nothing GlyphMatrixSDK.aar from official repository
 # This script helps automate the SDK download process
 
-SDK_URL="https://github.com/Nothing-Developer-Programme/Glyph-Developer-Kit/raw/main/sdk/GlyphMatrixSDK.aar"
+SDK_URL="https://raw.githubusercontent.com/Nothing-Developer-Programme/Glyph-Developer-Kit/main/sdk/KetchumSDK_Community_20250319.jar"
 SDK_DIR="libs"
-SDK_FILE="$SDK_DIR/GlyphMatrixSDK.aar"
+SDK_FILE="$SDK_DIR/KetchumSDK_Community_20250319.jar"
 
-echo "🚀 Downloading Nothing GlyphMatrixSDK.aar..."
+echo "🚀 Downloading Nothing Glyph SDK..."
 echo "📍 From: $SDK_URL"
 echo "📁 To: $SDK_FILE"
 echo ""
@@ -32,11 +32,11 @@ if curl -L -o "$SDK_FILE" "$SDK_URL"; then
         file_size=$(stat -f%z "$SDK_FILE" 2>/dev/null || stat -c%s "$SDK_FILE" 2>/dev/null)
         echo "📊 File size: $file_size bytes"
         
-        # Check if it's actually a JAR/AAR file
-        if file "$SDK_FILE" | grep -q "Zip archive"; then
-            echo "✅ File appears to be a valid AAR file"
+        # Check if it's actually a JAR file
+        if file "$SDK_FILE" | grep -q "Java archive"; then
+            echo "✅ File appears to be a valid JAR file"
         else
-            echo "⚠️  Warning: File may not be a valid AAR file"
+            echo "⚠️  Warning: File may not be a valid JAR file"
         fi
     fi
 else
