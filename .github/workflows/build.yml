@@ -33,10 +33,10 @@ jobs:
       - name: Download Nothing Glyph SDK
         run: |
           echo "Downloading Nothing Glyph SDK..."
-          mkdir -p libs
-          curl -L -o libs/GlyphMatrixSDK.aar https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit/raw/main/GlyphMatrixSDK.aar
+          mkdir -p app/libs
+          curl -L -o app/libs/GlyphMatrixSDK.aar https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit/raw/main/GlyphMatrixSDK.aar
           echo "✅ GlyphMatrixSDK.aar downloaded successfully!"
-          ls -la libs/
+          ls -la app/libs/
 
       - name: Make gradlew executable
         run: chmod +x gradlew
