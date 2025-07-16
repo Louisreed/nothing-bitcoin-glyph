@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="com.nothing.ketchum.permission.ENABLE"/>
+    <uses-permission android:name="com.nothing.glyph.permission.ENABLE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
         android:allowBackup="true"
@@ -24,6 +27,11 @@
         <meta-data
             android:name="NothingKey"
             android:value="test" />
+        
+        <!-- Alternative API key name (some documentation shows this format) -->
+        <meta-data
+            android:name="com.nothing.glyph.api_key"
+            android:value="test" />
 
         <!-- Main Activity -->
         <activity
@@ -38,9 +46,20 @@
         <!-- Bitcoin Glyph Toy Service -->
         <service 
             android:name=".BitcoinGlyphToyService"
-            android:exported="true">
+            android:exported="true"
+            android:enabled="true"
+            android:foregroundServiceType="none">
             <intent-filter>
                 <action android:name="com.nothing.glyph.TOY"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            
+            <!-- Additional intent filters for discovery -->
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.PACKAGE_REPLACED"/>
+                <data android:scheme="package"/>
             </intent-filter>
             
             <!-- Required: Toy name -->
@@ -67,6 +86,11 @@
             <meta-data
                 android:name="com.nothing.glyph.toy.order"
                 android:value="100"/>
+            
+            <!-- Mark as active/enabled -->
+            <meta-data
+                android:name="com.nothing.glyph.toy.active"
+                android:value="true"/>
         </service>
 
     </application>

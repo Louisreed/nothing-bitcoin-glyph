@@ -82,6 +82,11 @@ public class BitcoinGlyphToyService extends Service {
         mGlyphManager.init(mCallback);
         
         startPriceUpdates();
+        
+        // Log service creation to help with debugging
+        Log.i(TAG, "Bitcoin Glyph Toy Service successfully created and initialized");
+        Log.i(TAG, "Service package: " + getPackageName());
+        Log.i(TAG, "Service class: " + getClass().getName());
     }
     
     @Override
@@ -95,6 +100,16 @@ public class BitcoinGlyphToyService extends Service {
                 Log.d(TAG, "Glyph toy action received");
                 // This is called when the glyph toy is activated
                 handleGlyphToyActivation();
+            } else if ("com.nothing.glyph.TOY_LONGPRESS".equals(action)) {
+                Log.d(TAG, "Glyph toy long press received");
+                // Handle long press - toggle between icon and price
+                toggleDisplay();
+            } else if ("android.intent.action.BOOT_COMPLETED".equals(action) ||
+                       "android.intent.action.MY_PACKAGE_REPLACED".equals(action) ||
+                       "android.intent.action.PACKAGE_REPLACED".equals(action)) {
+                Log.d(TAG, "System startup or package replaced - registering service");
+                // Service is being started after boot or package update
+                // This helps with service discovery
             }
         }
         
@@ -135,6 +150,19 @@ public class BitcoinGlyphToyService extends Service {
         // This is called when the user activates the glyph toy
         if (isServiceConnected) {
             displayBitcoinIcon();
+        }
+    }
+    
+    private void toggleDisplay() {
+        Log.d(TAG, "Toggling display mode");
+        isShowingPrice = !isShowingPrice;
+        
+        if (isServiceConnected) {
+            if (isShowingPrice) {
+                displayPrice();
+            } else {
+                displayBitcoinIcon();
+            }
         }
     }
     
