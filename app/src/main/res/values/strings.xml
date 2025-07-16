@@ -2,4 +2,8 @@
     <string name="app_name">Bitcoin Glyph</string>
     <string name="bitcoin_tracker">Bitcoin Tracker</string>
     <string name="toy_description">Track Bitcoin price with live updates</string>
+    
+    <!-- Glyph Toy Metadata -->
+    <string name="glyph_toy_name">Bitcoin Tracker</string>
+    <string name="glyph_toy_summary">Track Bitcoin price with live updates and trend indicators</string>
 </resources> 

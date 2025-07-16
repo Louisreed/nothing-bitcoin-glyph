@@ -46,7 +46,7 @@
             <!-- Required: Toy name -->
             <meta-data
                 android:name="com.nothing.glyph.toy.name"
-                android:value="Bitcoin Tracker"/>
+                android:resource="@string/glyph_toy_name"/>
             
             <!-- Required: Preview thumbnail -->
             <meta-data
@@ -56,12 +56,17 @@
             <!-- Optional: Description -->
             <meta-data
                 android:name="com.nothing.glyph.toy.summary"
-                android:value="Track Bitcoin price with live updates and trend indicators"/>
+                android:resource="@string/glyph_toy_summary"/>
             
             <!-- Enable long press functionality -->
             <meta-data
                 android:name="com.nothing.glyph.toy.longpress"
                 android:value="1"/>
+            
+            <!-- Display order in toy list -->
+            <meta-data
+                android:name="com.nothing.glyph.toy.order"
+                android:value="100"/>
         </service>
 
     </application>
