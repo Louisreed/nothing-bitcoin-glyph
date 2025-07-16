@@ -1,6 +1,7 @@
 package com.louisreed.bitcoinglyph;
 
 import android.app.Service;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.os.IBinder;
 import android.os.Handler;
@@ -9,20 +10,77 @@ import android.util.Log;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import com.nothing.ketchum.Common;
+import com.nothing.ketchum.GlyphException;
+import com.nothing.ketchum.GlyphFrame;
+import com.nothing.ketchum.GlyphManager;
+import com.nothing.ketchum.Glyph;
+
 public class BitcoinGlyphToyService extends Service {
     private static final String TAG = "BitcoinGlyphToyService";
     private static final int UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
     
+    private GlyphManager mGlyphManager;
     private Timer priceUpdateTimer;
     private Handler mainHandler;
     private boolean isShowingPrice = false;
+    private boolean isServiceConnected = false;
     private double currentPrice = 0.0;
+    
+    private GlyphManager.Callback mCallback = new GlyphManager.Callback() {
+        @Override
+        public void onServiceConnected(ComponentName componentName) {
+            Log.d(TAG, "Glyph service connected");
+            isServiceConnected = true;
+            
+            // Register with the appropriate device
+            try {
+                if (Common.is20111()) {
+                    mGlyphManager.register(Glyph.DEVICE_20111);
+                } else if (Common.is22111()) {
+                    mGlyphManager.register(Glyph.DEVICE_22111);
+                } else if (Common.is23111()) {
+                    mGlyphManager.register(Glyph.DEVICE_23111);
+                } else if (Common.is23113()) {
+                    mGlyphManager.register(Glyph.DEVICE_23113);
+                }
+                
+                mGlyphManager.openSession();
+                Log.d(TAG, "Glyph session opened");
+                
+                // Show initial Bitcoin icon
+                displayBitcoinIcon();
+                
+            } catch (GlyphException e) {
+                Log.e(TAG, "Failed to initialize glyph: " + e.getMessage());
+            }
+        }
+        
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            Log.d(TAG, "Glyph service disconnected");
+            isServiceConnected = false;
+            try {
+                if (mGlyphManager != null) {
+                    mGlyphManager.closeSession();
+                }
+            } catch (GlyphException e) {
+                Log.e(TAG, "Failed to close glyph session: " + e.getMessage());
+            }
+        }
+    };
     
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "Bitcoin Glyph Toy Service created");
+        
         mainHandler = new Handler(Looper.getMainLooper());
+        
+        // Initialize Glyph Manager
+        mGlyphManager = GlyphManager.getInstance(getApplicationContext());
+        mGlyphManager.init(mCallback);
+        
         startPriceUpdates();
     }
     
@@ -36,8 +94,22 @@ public class BitcoinGlyphToyService extends Service {
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "Service destroyed");
+        
         if (priceUpdateTimer != null) {
             priceUpdateTimer.cancel();
+        }
+        
+        try {
+            if (mGlyphManager != null && isServiceConnected) {
+                mGlyphManager.turnOff();
+                mGlyphManager.closeSession();
+            }
+        } catch (GlyphException e) {
+            Log.e(TAG, "Failed to cleanup glyph: " + e.getMessage());
+        }
+        
+        if (mGlyphManager != null) {
+            mGlyphManager.unInit();
         }
     }
     
@@ -67,36 +139,56 @@ public class BitcoinGlyphToyService extends Service {
         
         mainHandler.post(() -> {
             Log.d(TAG, "Bitcoin price updated: $" + String.format("%.2f", currentPrice));
-            updateGlyphDisplay();
+            if (isShowingPrice) {
+                displayPrice();
+            }
         });
     }
     
-    private void updateGlyphDisplay() {
-        // TODO: Implement actual Glyph Matrix SDK integration
-        // This is a placeholder for the actual glyph display logic
-        Log.d(TAG, "Updating glyph display - showing " + (isShowingPrice ? "price" : "icon"));
+    private void displayPrice() {
+        if (!isServiceConnected || mGlyphManager == null) {
+            Log.w(TAG, "Glyph service not connected, cannot display price");
+            return;
+        }
+        
+        try {
+            // Create a frame for price display (simplified - just light up some zones)
+            GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
+            GlyphFrame frame = builder.buildChannelA().buildChannelB().build();
+            mGlyphManager.animate(frame);
+            
+            Log.d(TAG, "Displaying price: $" + String.format("%.0f", currentPrice));
+        } catch (GlyphException e) {
+            Log.e(TAG, "Failed to display price: " + e.getMessage());
+        }
+    }
+    
+    private void displayBitcoinIcon() {
+        if (!isServiceConnected || mGlyphManager == null) {
+            Log.w(TAG, "Glyph service not connected, cannot display icon");
+            return;
+        }
+        
+        try {
+            // Create a frame for Bitcoin icon display
+            GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
+            GlyphFrame frame = builder.buildChannelC().build();
+            mGlyphManager.toggle(frame);
+            
+            Log.d(TAG, "Displaying Bitcoin icon");
+        } catch (GlyphException e) {
+            Log.e(TAG, "Failed to display Bitcoin icon: " + e.getMessage());
+        }
+    }
+    
+    public void onLongPress() {
+        Log.d(TAG, "Long press detected - toggling display mode");
+        isShowingPrice = !isShowingPrice;
         
         if (isShowingPrice) {
             displayPrice();
         } else {
             displayBitcoinIcon();
         }
-    }
-    
-    private void displayPrice() {
-        // TODO: Display price on glyph matrix
-        Log.d(TAG, "Displaying price: $" + String.format("%.0f", currentPrice));
-    }
-    
-    private void displayBitcoinIcon() {
-        // TODO: Display Bitcoin icon on glyph matrix
-        Log.d(TAG, "Displaying Bitcoin icon");
-    }
-    
-    public void onLongPress() {
-        // Toggle between price and icon display
-        isShowingPrice = !isShowingPrice;
-        Log.d(TAG, "Long press detected - toggling display mode");
-        updateGlyphDisplay();
     }
 } 
