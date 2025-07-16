@@ -86,7 +86,18 @@ public class BitcoinGlyphToyService extends Service {
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d(TAG, "Service started");
+        Log.d(TAG, "Service started with intent: " + (intent != null ? intent.getAction() : "null"));
+        
+        // Handle glyph toy specific intents
+        if (intent != null) {
+            String action = intent.getAction();
+            if ("com.nothing.glyph.TOY".equals(action)) {
+                Log.d(TAG, "Glyph toy action received");
+                // This is called when the glyph toy is activated
+                handleGlyphToyActivation();
+            }
+        }
+        
         return START_STICKY;
     }
     
@@ -115,7 +126,16 @@ public class BitcoinGlyphToyService extends Service {
     
     @Override
     public IBinder onBind(Intent intent) {
+        Log.d(TAG, "Service bind requested");
         return null;
+    }
+    
+    private void handleGlyphToyActivation() {
+        Log.d(TAG, "Glyph toy activated");
+        // This is called when the user activates the glyph toy
+        if (isServiceConnected) {
+            displayBitcoinIcon();
+        }
     }
     
     private void startPriceUpdates() {
