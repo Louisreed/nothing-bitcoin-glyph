@@ -6,7 +6,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="com.nothing.ketchum.permission.ENABLE"/>
-    <uses-permission android:name="com.nothing.glyph.permission.ENABLE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
@@ -26,11 +25,6 @@
         <meta-data
             android:name="NothingKey"
             android:value="test" />
-        
-        <!-- Alternative API key name (some documentation shows this format) -->
-        <meta-data
-            android:name="com.nothing.glyph.api_key"
-            android:value="test" />
 
         <!-- Main Activity -->
         <activity
@@ -49,6 +43,12 @@
             android:enabled="true">
             <intent-filter>
                 <action android:name="com.nothing.glyph.TOY"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            
+            <!-- Long press intent filter -->
+            <intent-filter>
+                <action android:name="com.nothing.glyph.TOY_LONGPRESS"/>
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
             
@@ -78,7 +78,7 @@
             <!-- Enable long press functionality -->
             <meta-data
                 android:name="com.nothing.glyph.toy.longpress"
-                android:value="1"/>
+                android:value="true"/>
             
             <!-- Display order in toy list -->
             <meta-data

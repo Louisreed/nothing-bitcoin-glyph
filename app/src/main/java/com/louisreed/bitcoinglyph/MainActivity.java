@@ -22,7 +22,7 @@ public class MainActivity extends AppCompatActivity {
                 "3. Press the Glyph button on the back to cycle to Bitcoin\n" +
                 "4. Long press to toggle between icon and price display\n\n" +
                 "The toy will automatically fetch live Bitcoin prices every 5 minutes.\n\n" +
-                "⚠️ This app is designed specifically for Nothing Phone 3.");
+                "⚠️ This app is designed exclusively for Nothing Phone 3 with Glyph Matrix display.");
         
         // Start the glyph toy service to make it discoverable
         try {
