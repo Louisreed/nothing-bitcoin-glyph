@@ -14,21 +14,27 @@ import android.util.Log;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import com.nothing.glyph.matrix.GlyphMatrixManager;
-import com.nothing.glyph.matrix.GlyphMatrixFrame;
-import com.nothing.glyph.matrix.GlyphMatrixObject;
+// Using the correct package names from GlyphMatrixSDK.aar
+import com.nothing.ketchum.Common;
+import com.nothing.ketchum.GlyphException;
+import com.nothing.ketchum.GlyphFrame;
+import com.nothing.ketchum.GlyphManager;
+import com.nothing.ketchum.Glyph;
 
 public class BitcoinGlyphToyService extends Service {
     private static final String TAG = "BitcoinGlyphToyService";
     private static final int UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
-    private static final int MATRIX_SIZE = 25; // 25x25 matrix
+
     
-    private GlyphMatrixManager glyphMatrixManager;
-    private Timer priceUpdateTimer;
+    private GlyphManager glyphManager;
     private Handler mainHandler;
-    private boolean isShowingPrice = false;
+    private Timer priceUpdateTimer;
+    private boolean isServiceConnected = false;
     private double currentPrice = 0.0;
-    
+    private boolean showIcon = true; // Toggle between icon and price
+    private boolean isPhone3 = false;
+    private String deviceType = "Unknown";
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -36,228 +42,223 @@ public class BitcoinGlyphToyService extends Service {
         
         mainHandler = new Handler(Looper.getMainLooper());
         
-        // Initialize GlyphMatrix Manager
-        try {
-            glyphMatrixManager = new GlyphMatrixManager(this);
-            Log.i(TAG, "GlyphMatrixManager initialized successfully");
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize GlyphMatrixManager: " + e.getMessage());
+        // Check for Nothing Phone 3 by model instead of Common.is24111()
+        isPhone3 = android.os.Build.MODEL.equals("A024") || 
+                  android.os.Build.DEVICE.equals("Metroid") ||
+                  android.os.Build.PRODUCT.contains("Metroid") ||
+                  Common.is24111();
+        
+        Log.i(TAG, "Device info:");
+        Log.i(TAG, "  Device model: " + android.os.Build.MODEL);
+        Log.i(TAG, "  Device device: " + android.os.Build.DEVICE);
+        Log.i(TAG, "  Device product: " + android.os.Build.PRODUCT);
+        Log.i(TAG, "  Detected as Nothing Phone 3: " + isPhone3);
+        
+        if (!isPhone3) {
+            Log.e(TAG, "*** UNSUPPORTED DEVICE - This app only supports Nothing Phone 3 ***");
+            return;
         }
         
-        // Start Bitcoin price updates
-        startPriceUpdates();
+        // Initialize Glyph Manager
+        Log.i(TAG, "Initializing GlyphManager...");
+        glyphManager = GlyphManager.getInstance(getApplicationContext());
         
-        Log.i(TAG, "*** SERVICE INITIALIZATION COMPLETE ***");
+        if (glyphManager != null) {
+            Log.i(TAG, "GlyphManager initialized successfully");
+            glyphManager.init(mCallback);
+        } else {
+            Log.e(TAG, "Failed to initialize GlyphManager");
+        }
+        
+        // Start price update timer
+        startPriceUpdateTimer();
     }
-    
+
+    private GlyphManager.Callback mCallback = new GlyphManager.Callback() {
+        @Override
+        public void onServiceConnected(android.content.ComponentName componentName) {
+            Log.i(TAG, "*** GLYPH SERVICE CONNECTED ***");
+            isServiceConnected = true;
+            
+            // Register with Nothing Phone 3
+            try {
+                boolean registrationSuccess = glyphManager.register(Glyph.DEVICE_24111);
+                deviceType = "Nothing Phone 3 (24111)";
+                Log.i(TAG, "Registration success: " + registrationSuccess);
+                
+                if (registrationSuccess) {
+                    Log.i(TAG, "Opening glyph session...");
+                    glyphManager.openSession();
+                } else {
+                    Log.e(TAG, "Failed to register device");
+                }
+            } catch (GlyphException e) {
+                Log.e(TAG, "Registration error: " + e.getMessage(), e);
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(android.content.ComponentName componentName) {
+            Log.i(TAG, "*** GLYPH SERVICE DISCONNECTED ***");
+            isServiceConnected = false;
+        }
+    };
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.i(TAG, "=== SERVICE STARTED ===");
+        Log.i(TAG, "*** SERVICE STARTED ***");
+        
+        if (!isPhone3) {
+            Log.e(TAG, "Service started on unsupported device");
+            return START_NOT_STICKY;
+        }
         
         if (intent != null) {
             String action = intent.getAction();
-            Log.i(TAG, "Intent action: " + action);
+            Log.i(TAG, "Service started with action: " + action);
             
             if ("com.nothing.glyph.TOY".equals(action)) {
-                Log.i(TAG, "*** HANDLING GLYPH TOY ACTIVATION ***");
-                displayBitcoinIcon();
-            } else if ("com.nothing.glyph.TOY_LONGPRESS".equals(action)) {
-                Log.i(TAG, "*** HANDLING GLYPH TOY LONG PRESS ***");
-                toggleDisplay();
-            } else {
-                Log.i(TAG, "Unknown action: " + action + " - showing Bitcoin icon");
-                displayBitcoinIcon();
+                // Handle glyph button press
+                handleGlyphButtonPress();
+            } else if ("com.nothing.glyph.LONG_PRESS".equals(action)) {
+                // Handle long press - toggle display mode
+                toggleDisplayMode();
             }
-        } else {
-            Log.i(TAG, "No intent - showing Bitcoin icon");
+        }
+        
+        return START_STICKY;
+    }
+
+    private void handleGlyphButtonPress() {
+        Log.i(TAG, "Glyph button pressed");
+        
+        if (showIcon) {
             displayBitcoinIcon();
-        }
-        
-        return START_NOT_STICKY;
-    }
-    
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
-    
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        Log.d(TAG, "Service destroyed");
-        
-        if (priceUpdateTimer != null) {
-            priceUpdateTimer.cancel();
-            priceUpdateTimer = null;
-        }
-        
-        if (glyphMatrixManager != null) {
-            try {
-                glyphMatrixManager.close();
-            } catch (Exception e) {
-                Log.e(TAG, "Error closing GlyphMatrixManager: " + e.getMessage());
-            }
+        } else {
+            displayPrice();
         }
     }
-    
-    private void startPriceUpdates() {
-        Log.i(TAG, "Starting Bitcoin price updates");
+
+    private void toggleDisplayMode() {
+        Log.i(TAG, "Toggle display mode - Long press detected");
+        showIcon = !showIcon;
         
+        if (showIcon) {
+            Log.i(TAG, "Switching to Bitcoin icon mode");
+            displayBitcoinIcon();
+        } else {
+            Log.i(TAG, "Switching to price display mode");
+            displayPrice();
+        }
+    }
+
+    private void displayBitcoinIcon() {
+        Log.i(TAG, "*** DISPLAYING BITCOIN ICON ***");
+        
+        if (!isServiceConnected || glyphManager == null) {
+            Log.e(TAG, "Cannot display icon - service not ready");
+            return;
+        }
+        
+        try {
+            // Create Bitcoin icon pattern for Nothing Phone 3
+            Log.i(TAG, "Creating Bitcoin icon glyph pattern");
+            
+            // Create GlyphFrame using all channels for a Bitcoin icon pattern
+            GlyphFrame.Builder builder = glyphManager.getGlyphFrameBuilder();
+            
+            // For Phone 3, create a pattern using all channels
+            GlyphFrame frame = builder
+                .buildChannelA()
+                .buildChannelB() 
+                .buildChannelC()
+                .buildPeriod(1000)
+                .buildCycles(3)
+                .buildInterval(500)
+                .build();
+            
+            // Send frame to display
+            glyphManager.toggle(frame);
+            Log.i(TAG, "*** BITCOIN ICON FRAME SENT SUCCESSFULLY ***");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error displaying Bitcoin icon: " + e.getMessage(), e);
+        }
+    }
+
+
+
+    private void displayPrice() {
+        Log.i(TAG, "*** DISPLAYING PRICE ***");
+        
+        if (!isServiceConnected || glyphManager == null) {
+            Log.e(TAG, "Cannot display price - service not ready");
+            return;
+        }
+        
+        try {
+            // Create price display pattern for Nothing Phone 3
+            Log.i(TAG, "Creating price display glyph pattern");
+            
+            // Create GlyphFrame using B channels for price display
+            GlyphFrame.Builder builder = glyphManager.getGlyphFrameBuilder();
+            
+            // For Phone 3, create a price pattern using B channels
+            GlyphFrame frame = builder
+                .buildChannelB()
+                .buildPeriod(2000)
+                .buildCycles(1)
+                .build();
+            
+            // Send frame to display
+            glyphManager.toggle(frame);
+            Log.i(TAG, "*** PRICE FRAME SENT SUCCESSFULLY ***");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error displaying price: " + e.getMessage(), e);
+        }
+    }
+
+
+
+    private void startPriceUpdateTimer() {
         priceUpdateTimer = new Timer();
-        priceUpdateTimer.schedule(new TimerTask() {
+        priceUpdateTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
                 fetchBitcoinPrice();
             }
         }, 0, UPDATE_INTERVAL);
     }
-    
+
     private void fetchBitcoinPrice() {
-        // Simulate fetching price (in real app, you'd make HTTP request)
-        currentPrice = 45000 + (Math.random() * 20000); // Random price between 45k-65k
-        Log.d(TAG, "Bitcoin price updated: $" + String.format("%.2f", currentPrice));
+        // Simulate Bitcoin price fetching
+        // In production, this would make an actual API call
+        currentPrice = 45000 + (Math.random() * 10000); // Random price between 45k-55k
+        Log.i(TAG, "Bitcoin price updated: $" + String.format("%.2f", currentPrice));
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.i(TAG, "*** SERVICE DESTROYED ***");
         
-        // Update display if showing price
-        if (isShowingPrice) {
-            mainHandler.post(this::displayPrice);
+        if (priceUpdateTimer != null) {
+            priceUpdateTimer.cancel();
+        }
+        
+        if (glyphManager != null && isServiceConnected) {
+            try {
+                glyphManager.closeSession();
+                glyphManager.unInit();
+            } catch (Exception e) {
+                Log.e(TAG, "Error during cleanup: " + e.getMessage(), e);
+            }
         }
     }
-    
-    private void displayBitcoinIcon() {
-        Log.i(TAG, "*** DISPLAYING BITCOIN ICON ***");
-        
-        if (glyphMatrixManager == null) {
-            Log.e(TAG, "GlyphMatrixManager is null");
-            return;
-        }
-        
-        try {
-            // Create a 25x25 bitmap with Bitcoin symbol
-            Bitmap bitcoinBitmap = createBitcoinIconBitmap();
-            
-            // Convert bitmap to GlyphMatrixObject
-            GlyphMatrixObject matrixObject = GlyphMatrixObject.fromBitmap(bitcoinBitmap);
-            
-            // Create GlyphMatrixFrame with the object
-            GlyphMatrixFrame frame = new GlyphMatrixFrame.Builder()
-                    .addObject(matrixObject)
-                    .setDuration(3000) // 3 seconds
-                    .build();
-            
-            // Display the frame
-            glyphMatrixManager.setMatrixFrame(frame);
-            
-            isShowingPrice = false;
-            Log.i(TAG, "*** BITCOIN ICON DISPLAYED SUCCESSFULLY ***");
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error displaying Bitcoin icon: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
-    private void displayPrice() {
-        Log.i(TAG, "*** DISPLAYING BITCOIN PRICE ***");
-        
-        if (glyphMatrixManager == null) {
-            Log.e(TAG, "GlyphMatrixManager is null");
-            return;
-        }
-        
-        try {
-            // Create a 25x25 bitmap with price text
-            Bitmap priceBitmap = createPriceBitmap();
-            
-            // Convert bitmap to GlyphMatrixObject
-            GlyphMatrixObject matrixObject = GlyphMatrixObject.fromBitmap(priceBitmap);
-            
-            // Create GlyphMatrixFrame with the object
-            GlyphMatrixFrame frame = new GlyphMatrixFrame.Builder()
-                    .addObject(matrixObject)
-                    .setDuration(5000) // 5 seconds
-                    .build();
-            
-            // Display the frame
-            glyphMatrixManager.setMatrixFrame(frame);
-            
-            isShowingPrice = true;
-            Log.i(TAG, "*** BITCOIN PRICE DISPLAYED SUCCESSFULLY ***");
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error displaying Bitcoin price: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
-    private void toggleDisplay() {
-        Log.i(TAG, "*** TOGGLING DISPLAY MODE ***");
-        
-        if (isShowingPrice) {
-            displayBitcoinIcon();
-        } else {
-            displayPrice();
-        }
-    }
-    
-    private Bitmap createBitcoinIconBitmap() {
-        Bitmap bitmap = Bitmap.createBitmap(MATRIX_SIZE, MATRIX_SIZE, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        
-        // Clear background
-        canvas.drawColor(Color.BLACK);
-        
-        // Create paint for Bitcoin symbol
-        Paint paint = new Paint();
-        paint.setColor(Color.WHITE);
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(2f);
-        paint.setAntiAlias(true);
-        
-        // Draw Bitcoin symbol (₿)
-        // Outer circle
-        canvas.drawCircle(MATRIX_SIZE / 2f, MATRIX_SIZE / 2f, MATRIX_SIZE / 2f - 2, paint);
-        
-        // Bitcoin "B" shape
-        paint.setStyle(Paint.Style.FILL);
-        paint.setTextSize(MATRIX_SIZE / 2f);
-        paint.setTypeface(Typeface.DEFAULT_BOLD);
-        
-        // Center the "B" text
-        float textX = MATRIX_SIZE / 2f - paint.measureText("B") / 2f;
-        float textY = MATRIX_SIZE / 2f + paint.getTextSize() / 3f;
-        canvas.drawText("B", textX, textY, paint);
-        
-        // Add vertical lines for Bitcoin symbol
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(1f);
-        canvas.drawLine(MATRIX_SIZE / 2f, 3, MATRIX_SIZE / 2f, 7, paint);
-        canvas.drawLine(MATRIX_SIZE / 2f, MATRIX_SIZE - 7, MATRIX_SIZE / 2f, MATRIX_SIZE - 3, paint);
-        
-        return bitmap;
-    }
-    
-    private Bitmap createPriceBitmap() {
-        Bitmap bitmap = Bitmap.createBitmap(MATRIX_SIZE, MATRIX_SIZE, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        
-        // Clear background
-        canvas.drawColor(Color.BLACK);
-        
-        // Create paint for price text
-        Paint paint = new Paint();
-        paint.setColor(Color.WHITE);
-        paint.setStyle(Paint.Style.FILL);
-        paint.setTextSize(6f); // Small text to fit in 25x25
-        paint.setAntiAlias(true);
-        
-        // Format price (e.g., "45K")
-        String priceText = String.format("%.0fK", currentPrice / 1000);
-        
-        // Center the text
-        float textX = MATRIX_SIZE / 2f - paint.measureText(priceText) / 2f;
-        float textY = MATRIX_SIZE / 2f + paint.getTextSize() / 3f;
-        canvas.drawText(priceText, textX, textY, paint);
-        
-        return bitmap;
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
     }
 } 
