@@ -1,163 +1,81 @@
 package com.louisreed.bitcoinglyph;
 
-import android.app.Service;
-import android.content.Intent;
-import android.os.IBinder;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-import android.os.Messenger;
-import android.os.Bundle;
-import android.util.Log;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
-import java.util.Timer;
-import java.util.TimerTask;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+import com.nothing.ketchum.GlyphMatrixFrame;
+import com.nothing.ketchum.GlyphMatrixManager;
+import com.nothing.ketchum.GlyphMatrixObject;
+import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import org.json.JSONObject;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-// Using the correct Glyph SDK classes from the new documentation
-import com.nothing.ketchum.Common;
-import com.nothing.ketchum.Glyph;
-import com.nothing.ketchum.GlyphException;
-import com.nothing.ketchum.GlyphMatrixFrame;
-import com.nothing.ketchum.GlyphMatrixManager;
-import com.nothing.ketchum.GlyphMatrixObject;
-import com.nothing.ketchum.GlyphMatrixUtils;
-import com.nothing.ketchum.GlyphToy;
-
-public class BitcoinGlyphToyService extends Service {
+public class BitcoinGlyphToyService extends GlyphMatrixService {
     private static final String TAG = "BitcoinGlyphToyService";
     private static final int UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
     private static final String BITCOIN_API_URL = "https://api.coindesk.com/v1/bpi/currentprice.json";
 
-    private GlyphMatrixManager glyphMatrixManager;
     private Timer priceUpdateTimer;
     private Handler mainHandler;
-    private boolean isShowingIcon = true;
-    private boolean isInitialized = false;
     private ExecutorService executorService;
+    private boolean isShowingIcon = true;
     
     // Price variables
     private double currentPrice = 0.0;
     private long lastUpdateTime = 0;
     
-    // Handler for processing glyph toy events
-    private final Handler serviceHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case GlyphToy.MSG_GLYPH_TOY: {
-                    Bundle bundle = msg.getData();
-                    String event = bundle.getString(GlyphToy.MSG_GLYPH_TOY_DATA);
-                    Log.d(TAG, "Received glyph toy event: " + event);
-                    
-                    if (GlyphToy.EVENT_CHANGE.equals(event)) {
-                        // Handle long press event - toggle between icon and price
-                        toggleDisplay();
-                    }
-                    break;
-                }
-                default:
-                    super.handleMessage(msg);
-            }
-        }
-    };
-    
-    // Messenger for communicating with the system
-    private final Messenger serviceMessenger = new Messenger(serviceHandler);
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        Log.d(TAG, "Service bound");
-        init();
-        return serviceMessenger.getBinder();
+    public BitcoinGlyphToyService() {
+        super("Bitcoin-Glyph-Toy");
     }
 
     @Override
-    public boolean onUnbind(Intent intent) {
-        Log.d(TAG, "Service unbound");
-        cleanup();
-        return false;
+    public void performOnServiceConnected(Context context, GlyphMatrixManager glyphMatrixManager) {
+        Log.d(TAG, "Service connected, initializing Bitcoin tracker");
+        
+        // Initialize components
+        mainHandler = new Handler(Looper.getMainLooper());
+        executorService = Executors.newFixedThreadPool(2);
+        
+        // Start price updates
+        startPriceUpdates();
+        
+        // Show initial display
+        displayBitcoinIcon(glyphMatrixManager);
     }
 
-    private void init() {
-        Log.d(TAG, "Initializing Bitcoin Glyph Toy Service");
+    @Override
+    public void performOnServiceDisconnected(Context context) {
+        Log.d(TAG, "Service disconnected, cleaning up");
         
-        if (isInitialized) {
-            Log.d(TAG, "Service already initialized");
-            return;
-        }
-        
-        try {
-            mainHandler = new Handler(Looper.getMainLooper());
-            executorService = Executors.newFixedThreadPool(2);
-            
-            // Initialize the GlyphMatrixManager
-            glyphMatrixManager = new GlyphMatrixManager();
-            glyphMatrixManager.init(new GlyphMatrixManager.Callback() {
-                @Override
-                public void onServiceConnected(android.content.ComponentName componentName) {
-                    Log.d(TAG, "Glyph Matrix service connected");
-                    try {
-                        // Register for Phone 3 as specified in documentation
-                        glyphMatrixManager.register(Glyph.DEVICE_23112);
-                        isInitialized = true;
-                        
-                        // Start price updates
-                        startPriceUpdates();
-                        
-                        // Show initial display
-                        displayBitcoinIcon();
-                        
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error registering glyph matrix manager: " + e.getMessage(), e);
-                    }
-                }
-
-                @Override
-                public void onServiceDisconnected(android.content.ComponentName componentName) {
-                    Log.d(TAG, "Glyph Matrix service disconnected");
-                    isInitialized = false;
-                }
-            });
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error initializing service: " + e.getMessage(), e);
-        }
-    }
-
-    private void cleanup() {
-        Log.d(TAG, "Cleaning up service");
-        
+        // Cleanup timer
         if (priceUpdateTimer != null) {
             priceUpdateTimer.cancel();
             priceUpdateTimer = null;
         }
         
+        // Cleanup executor
         if (executorService != null) {
             executorService.shutdown();
             executorService = null;
         }
-        
-        if (glyphMatrixManager != null && isInitialized) {
-            try {
-                glyphMatrixManager.unInit();
-            } catch (Exception e) {
-                Log.e(TAG, "Error uninitializing glyph matrix manager: " + e.getMessage(), e);
-            }
-            glyphMatrixManager = null;
-        }
-        
-        isInitialized = false;
+    }
+
+    @Override
+    public void onTouchPointLongPress() {
+        Log.d(TAG, "Long press detected - toggling display");
+        toggleDisplay();
     }
 
     private void startPriceUpdates() {
@@ -210,8 +128,13 @@ public class BitcoinGlyphToyService extends Service {
                     Log.d(TAG, "Updated Bitcoin price: $" + String.format("%.2f", currentPrice));
                     
                     // If we're showing price, update the display
-                    if (!isShowingIcon && isInitialized) {
-                        mainHandler.post(this::displayBitcoinPrice);
+                    if (!isShowingIcon) {
+                        mainHandler.post(() -> {
+                            GlyphMatrixManager manager = getGlyphMatrixManager();
+                            if (manager != null) {
+                                displayBitcoinPrice(manager);
+                            }
+                        });
                     }
                     
                 } else {
@@ -230,22 +153,19 @@ public class BitcoinGlyphToyService extends Service {
     }
 
     private void toggleDisplay() {
-        Log.d(TAG, "Toggling display mode");
         isShowingIcon = !isShowingIcon;
         
-        if (isShowingIcon) {
-            displayBitcoinIcon();
-        } else {
-            displayBitcoinPrice();
+        GlyphMatrixManager manager = getGlyphMatrixManager();
+        if (manager != null) {
+            if (isShowingIcon) {
+                displayBitcoinIcon(manager);
+            } else {
+                displayBitcoinPrice(manager);
+            }
         }
     }
 
-    private void displayBitcoinIcon() {
-        if (!isInitialized) {
-            Log.w(TAG, "Cannot display icon - service not initialized");
-            return;
-        }
-        
+    private void displayBitcoinIcon(GlyphMatrixManager glyphMatrixManager) {
         Log.d(TAG, "Displaying Bitcoin icon");
         
         try {
@@ -276,12 +196,7 @@ public class BitcoinGlyphToyService extends Service {
         }
     }
 
-    private void displayBitcoinPrice() {
-        if (!isInitialized) {
-            Log.w(TAG, "Cannot display price - service not initialized");
-            return;
-        }
-        
+    private void displayBitcoinPrice(GlyphMatrixManager glyphMatrixManager) {
         Log.d(TAG, "Displaying Bitcoin price: $" + String.format("%.0f", currentPrice));
         
         try {
@@ -370,12 +285,5 @@ public class BitcoinGlyphToyService extends Service {
         canvas.drawText(priceText, (25 - textWidth) / 2, 15, paint);
         
         return bitmap;
-    }
-
-    @Override
-    public void onDestroy() {
-        Log.d(TAG, "Service destroyed");
-        cleanup();
-        super.onDestroy();
     }
 } 
