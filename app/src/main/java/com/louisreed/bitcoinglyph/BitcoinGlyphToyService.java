@@ -182,7 +182,7 @@ public class BitcoinGlyphToyService extends Service {
             glyphManager.animate(frame);
             Log.i(TAG, "*** BITCOIN ICON FRAME ANIMATED SUCCESSFULLY ***");
             
-        } catch (GlyphException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Error displaying Bitcoin icon: " + e.getMessage(), e);
         }
     }
@@ -215,7 +215,7 @@ public class BitcoinGlyphToyService extends Service {
             glyphManager.toggle(frame);
             Log.i(TAG, "*** PRICE FRAME TOGGLED SUCCESSFULLY ***");
             
-        } catch (GlyphException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Error displaying price: " + e.getMessage(), e);
         }
     }
