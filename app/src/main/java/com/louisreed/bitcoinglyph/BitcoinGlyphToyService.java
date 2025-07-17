@@ -14,19 +14,19 @@ import android.util.Log;
 import java.util.Timer;
 import java.util.TimerTask;
 
-// Using the correct package names from GlyphMatrixSDK.aar
+// Using the correct GlyphMatrix SDK classes for Nothing Phone 3
 import com.nothing.ketchum.Common;
 import com.nothing.ketchum.GlyphException;
-import com.nothing.ketchum.GlyphFrame;
-import com.nothing.ketchum.GlyphManager;
-import com.nothing.ketchum.Glyph;
+import com.nothing.glyph.matrix.GlyphMatrixManager;
+import com.nothing.glyph.matrix.GlyphMatrixFrame;
+import com.nothing.glyph.matrix.GlyphMatrixObject;
 
 public class BitcoinGlyphToyService extends Service {
     private static final String TAG = "BitcoinGlyphToyService";
     private static final int UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
     
-    private GlyphManager glyphManager;
+    private GlyphMatrixManager glyphMatrixManager;
     private Handler mainHandler;
     private Timer priceUpdateTimer;
     private boolean isServiceConnected = false;
@@ -59,47 +59,42 @@ public class BitcoinGlyphToyService extends Service {
             return;
         }
         
-        // Initialize Glyph Manager
-        Log.i(TAG, "Initializing GlyphManager...");
-        glyphManager = GlyphManager.getInstance(getApplicationContext());
+        // Initialize Glyph Matrix Manager
+        Log.i(TAG, "Initializing GlyphMatrixManager...");
+        glyphMatrixManager = GlyphMatrixManager.getInstance(getApplicationContext());
         
-        if (glyphManager != null) {
-            Log.i(TAG, "GlyphManager initialized successfully");
-            glyphManager.init(mCallback);
+        if (glyphMatrixManager != null) {
+            Log.i(TAG, "GlyphMatrixManager initialized successfully");
+            glyphMatrixManager.init(mCallback);
         } else {
-            Log.e(TAG, "Failed to initialize GlyphManager");
+            Log.e(TAG, "Failed to initialize GlyphMatrixManager");
         }
         
         // Start price update timer
         startPriceUpdateTimer();
     }
 
-    private GlyphManager.Callback mCallback = new GlyphManager.Callback() {
+    private GlyphMatrixManager.Callback mCallback = new GlyphMatrixManager.Callback() {
         @Override
         public void onServiceConnected(android.content.ComponentName componentName) {
-            Log.i(TAG, "*** GLYPH SERVICE CONNECTED ***");
+            Log.i(TAG, "*** GLYPH MATRIX SERVICE CONNECTED ***");
             isServiceConnected = true;
             
-            // Register with Nothing Phone 3
+            // No device registration needed for matrix SDK
+            Log.i(TAG, "GlyphMatrix service ready - no registration required");
+            
+            // Open session directly
             try {
-                boolean registrationSuccess = glyphManager.register(Glyph.DEVICE_24111);
-                deviceType = "Nothing Phone 3 (24111)";
-                Log.i(TAG, "Registration success: " + registrationSuccess);
-                
-                if (registrationSuccess) {
-                    Log.i(TAG, "Opening glyph session...");
-                    glyphManager.openSession();
-                } else {
-                    Log.e(TAG, "Failed to register device");
-                }
-            } catch (GlyphException e) {
-                Log.e(TAG, "Registration error: " + e.getMessage(), e);
+                glyphMatrixManager.openSession();
+                Log.i(TAG, "GlyphMatrix session opened successfully");
+            } catch (Exception e) {
+                Log.e(TAG, "Error opening GlyphMatrix session: " + e.getMessage(), e);
             }
         }
 
         @Override
         public void onServiceDisconnected(android.content.ComponentName componentName) {
-            Log.i(TAG, "*** GLYPH SERVICE DISCONNECTED ***");
+            Log.i(TAG, "*** GLYPH MATRIX SERVICE DISCONNECTED ***");
             isServiceConnected = false;
         }
     };
@@ -155,71 +150,158 @@ public class BitcoinGlyphToyService extends Service {
     private void displayBitcoinIcon() {
         Log.i(TAG, "*** DISPLAYING BITCOIN ICON ***");
         
-        if (!isServiceConnected || glyphManager == null) {
+        if (!isServiceConnected || glyphMatrixManager == null) {
             Log.e(TAG, "Cannot display icon - service not ready");
             return;
         }
         
         try {
-            // Create Bitcoin icon pattern for Nothing Phone 3
-            Log.i(TAG, "Creating Bitcoin icon glyph pattern");
+            // Create Bitcoin icon pattern for Nothing Phone 3 25x25 matrix
+            Log.i(TAG, "Creating Bitcoin icon matrix pattern");
             
-            // Create GlyphFrame using all channels for a Bitcoin icon pattern
-            GlyphFrame.Builder builder = glyphManager.getGlyphFrameBuilder();
+            // Create a Bitcoin "B" symbol pattern on the 25x25 matrix
+            boolean[][] bitcoinPattern = createBitcoinIconPattern();
             
-            // For Phone 3, create a pattern using all channels
-            GlyphFrame frame = builder
-                .buildChannelA()
-                .buildChannelB() 
-                .buildChannelC()
-                .buildPeriod(1000)
-                .buildCycles(3)
-                .buildInterval(500)
-                .build();
+            // Create GlyphMatrixObject with the pattern
+            GlyphMatrixObject matrixObject = new GlyphMatrixObject(bitcoinPattern);
+            
+            // Create GlyphMatrixFrame with the object
+            GlyphMatrixFrame frame = new GlyphMatrixFrame(matrixObject);
+            
+            // Set display period and cycles
+            frame.setPeriod(1000); // 1 second on
+            frame.setCycles(3); // 3 cycles
+            frame.setInterval(500); // 0.5 second interval
             
             // Send frame to display
-            glyphManager.toggle(frame);
-            Log.i(TAG, "*** BITCOIN ICON FRAME SENT SUCCESSFULLY ***");
+            glyphMatrixManager.setMatrixFrame(frame);
+            Log.i(TAG, "*** BITCOIN ICON MATRIX FRAME SENT SUCCESSFULLY ***");
             
         } catch (Exception e) {
             Log.e(TAG, "Error displaying Bitcoin icon: " + e.getMessage(), e);
         }
     }
 
-
+    private boolean[][] createBitcoinIconPattern() {
+        // Create a 25x25 matrix with a Bitcoin "B" symbol
+        boolean[][] pattern = new boolean[25][25];
+        
+        // Simple Bitcoin "B" pattern in the center
+        // This creates a stylized "B" shape
+        for (int row = 5; row < 20; row++) {
+            // Left vertical line
+            pattern[row][8] = true;
+            pattern[row][9] = true;
+            
+            // Top horizontal line
+            if (row == 5 || row == 6) {
+                for (int col = 8; col < 16; col++) {
+                    pattern[row][col] = true;
+                }
+            }
+            
+            // Middle horizontal line
+            if (row == 11 || row == 12) {
+                for (int col = 8; col < 15; col++) {
+                    pattern[row][col] = true;
+                }
+            }
+            
+            // Bottom horizontal line
+            if (row == 18 || row == 19) {
+                for (int col = 8; col < 17; col++) {
+                    pattern[row][col] = true;
+                }
+            }
+            
+            // Right vertical segments
+            if (row >= 7 && row <= 10) {
+                pattern[row][15] = true;
+                pattern[row][16] = true;
+            }
+            if (row >= 13 && row <= 17) {
+                pattern[row][16] = true;
+                pattern[row][17] = true;
+            }
+        }
+        
+        return pattern;
+    }
 
     private void displayPrice() {
         Log.i(TAG, "*** DISPLAYING PRICE ***");
         
-        if (!isServiceConnected || glyphManager == null) {
+        if (!isServiceConnected || glyphMatrixManager == null) {
             Log.e(TAG, "Cannot display price - service not ready");
             return;
         }
         
         try {
-            // Create price display pattern for Nothing Phone 3
-            Log.i(TAG, "Creating price display glyph pattern");
+            // Create price display pattern for Nothing Phone 3 25x25 matrix
+            Log.i(TAG, "Creating price display matrix pattern");
             
-            // Create GlyphFrame using B channels for price display
-            GlyphFrame.Builder builder = glyphManager.getGlyphFrameBuilder();
+            // Create a simple price indicator pattern
+            boolean[][] pricePattern = createPricePattern();
             
-            // For Phone 3, create a price pattern using B channels
-            GlyphFrame frame = builder
-                .buildChannelB()
-                .buildPeriod(2000)
-                .buildCycles(1)
-                .build();
+            // Create GlyphMatrixObject with the pattern
+            GlyphMatrixObject matrixObject = new GlyphMatrixObject(pricePattern);
+            
+            // Create GlyphMatrixFrame with the object
+            GlyphMatrixFrame frame = new GlyphMatrixFrame(matrixObject);
+            
+            // Set display period and cycles
+            frame.setPeriod(2000); // 2 seconds on
+            frame.setCycles(1); // Single cycle
             
             // Send frame to display
-            glyphManager.toggle(frame);
-            Log.i(TAG, "*** PRICE FRAME SENT SUCCESSFULLY ***");
+            glyphMatrixManager.setMatrixFrame(frame);
+            Log.i(TAG, "*** PRICE MATRIX FRAME SENT SUCCESSFULLY ***");
             
         } catch (Exception e) {
             Log.e(TAG, "Error displaying price: " + e.getMessage(), e);
         }
     }
 
-
+    private boolean[][] createPricePattern() {
+        // Create a 25x25 matrix with a price indicator pattern
+        boolean[][] pattern = new boolean[25][25];
+        
+        // Create a dollar sign "$" pattern
+        for (int row = 3; row < 22; row++) {
+            // Vertical line for dollar sign
+            if (row >= 6 && row <= 18) {
+                pattern[row][12] = true;
+                pattern[row][13] = true;
+            }
+            
+            // Top curve of S
+            if (row >= 3 && row <= 8) {
+                for (int col = 8; col < 17; col++) {
+                    if (row == 3 || row == 8 || col == 8 || col == 16) {
+                        pattern[row][col] = true;
+                    }
+                }
+            }
+            
+            // Middle line of S
+            if (row == 11 || row == 12) {
+                for (int col = 8; col < 17; col++) {
+                    pattern[row][col] = true;
+                }
+            }
+            
+            // Bottom curve of S
+            if (row >= 16 && row <= 21) {
+                for (int col = 8; col < 17; col++) {
+                    if (row == 16 || row == 21 || col == 8 || col == 16) {
+                        pattern[row][col] = true;
+                    }
+                }
+            }
+        }
+        
+        return pattern;
+    }
 
     private void startPriceUpdateTimer() {
         priceUpdateTimer = new Timer();
@@ -247,10 +329,10 @@ public class BitcoinGlyphToyService extends Service {
             priceUpdateTimer.cancel();
         }
         
-        if (glyphManager != null && isServiceConnected) {
+        if (glyphMatrixManager != null && isServiceConnected) {
             try {
-                glyphManager.closeSession();
-                glyphManager.unInit();
+                glyphMatrixManager.closeSession();
+                glyphMatrixManager.unInit();
             } catch (Exception e) {
                 Log.e(TAG, "Error during cleanup: " + e.getMessage(), e);
             }
