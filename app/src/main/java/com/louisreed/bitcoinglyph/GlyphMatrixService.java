@@ -88,9 +88,13 @@ public abstract class GlyphMatrixService extends Service {
         Log.d(TAG, logTag + ": onBind");
         
         try {
-            glyphMatrixManager = new GlyphMatrixManager();
-            glyphMatrixManager.init(gmmCallback);
-            Log.d(TAG, logTag + ": onBind completed");
+            glyphMatrixManager = GlyphMatrixManager.getInstance(getApplicationContext());
+            if (glyphMatrixManager != null) {
+                glyphMatrixManager.init(gmmCallback);
+                Log.d(TAG, logTag + ": onBind completed");
+            } else {
+                Log.e(TAG, logTag + ": Failed to get GlyphMatrixManager instance");
+            }
         } catch (Exception e) {
             Log.e(TAG, logTag + ": Error during onBind: " + e.getMessage(), e);
         }
