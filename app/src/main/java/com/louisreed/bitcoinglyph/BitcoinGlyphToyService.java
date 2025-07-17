@@ -14,6 +14,7 @@ import com.nothing.ketchum.Common;
 import com.nothing.ketchum.Glyph;
 import com.nothing.ketchum.GlyphException;
 import com.nothing.ketchum.GlyphFrame;
+import com.nothing.ketchum.GlyphMatrixFrame;
 import com.nothing.ketchum.GlyphManager;
 
 public class BitcoinGlyphToyService extends Service {
@@ -25,6 +26,7 @@ public class BitcoinGlyphToyService extends Service {
     private Handler mainHandler;
     private boolean isShowingIcon = true;
     private boolean isInitialized = false;
+    private boolean isPhone3 = false;
     
     // Price variables
     private double currentPrice = 0.0;
@@ -70,12 +72,35 @@ public class BitcoinGlyphToyService extends Service {
                 public void onServiceConnected(android.content.ComponentName componentName) {
                     Log.d(TAG, "Glyph service connected");
                     try {
-                        // Register for Phone 3 (24111)
-                        if (Common.is24111()) {
-                            glyphManager.register(Glyph.DEVICE_24111);
-                        } else {
+                        // Check device type to determine API usage
+                        // Phone 3 (A024/Metroid) uses matrix API, others use channel API
+                        String model = android.os.Build.MODEL;
+                        String device = android.os.Build.DEVICE;
+                        
+                        Log.d(TAG, "Device model: " + model + ", device: " + device);
+                        
+                        // Phone 3 detection: model A024 or device Metroid
+                        if ("A024".equals(model) || "Metroid".equals(device)) {
+                            isPhone3 = true;
+                            Log.d(TAG, "Detected Nothing Phone 3 - using matrix API");
                             glyphManager.register();
+                        } else {
+                            // Use old channel-based API for other phones
+                            if (Common.is20111()) {
+                                glyphManager.register(Glyph.DEVICE_20111);
+                            } else if (Common.is22111()) {
+                                glyphManager.register(Glyph.DEVICE_22111);
+                            } else if (Common.is23111()) {
+                                glyphManager.register(Glyph.DEVICE_23111);
+                            } else if (Common.is23113()) {
+                                glyphManager.register(Glyph.DEVICE_23113);
+                            } else if (Common.is24111()) {
+                                glyphManager.register(Glyph.DEVICE_24111);
+                            } else {
+                                glyphManager.register();
+                            }
                         }
+                        
                         glyphManager.openSession();
                         isInitialized = true;
                         
@@ -144,14 +169,84 @@ public class BitcoinGlyphToyService extends Service {
         Log.d(TAG, "Displaying Bitcoin icon");
         
         try {
-            // Create a frame builder for Phone 3
+            if (isPhone3) {
+                displayBitcoinIconMatrix();
+            } else {
+                displayBitcoinIconChannels();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error displaying Bitcoin icon: " + e.getMessage(), e);
+        }
+    }
+
+    private void displayBitcoinIconMatrix() {
+        try {
+            // Create a matrix frame for Phone 3's 25x25 display
+            GlyphMatrixFrame.Builder builder = new GlyphMatrixFrame.Builder();
+            
+            // Create a Bitcoin "B" pattern using 25x25 matrix
+            // This is a simplified pattern - you can create more complex ones
+            boolean[][] matrix = new boolean[25][25];
+            
+            // Bitcoin "B" pattern
+            // Vertical line (left side)
+            for (int i = 5; i < 20; i++) {
+                matrix[i][8] = true;
+                matrix[i][9] = true;
+            }
+            
+            // Top horizontal line
+            for (int j = 8; j < 16; j++) {
+                matrix[5][j] = true;
+                matrix[6][j] = true;
+            }
+            
+            // Middle horizontal line
+            for (int j = 8; j < 15; j++) {
+                matrix[12][j] = true;
+                matrix[13][j] = true;
+            }
+            
+            // Bottom horizontal line
+            for (int j = 8; j < 16; j++) {
+                matrix[18][j] = true;
+                matrix[19][j] = true;
+            }
+            
+            // Right vertical lines
+            for (int i = 7; i < 12; i++) {
+                matrix[i][15] = true;
+                matrix[i][16] = true;
+            }
+            for (int i = 14; i < 19; i++) {
+                matrix[i][15] = true;
+                matrix[i][16] = true;
+            }
+            
+            // Convert boolean matrix to the format expected by GlyphMatrixFrame
+            builder.buildMatrix(matrix);
+            builder.buildPeriod(1000); // 1 second on
+            builder.buildCycles(3);    // 3 cycles
+            builder.buildInterval(500); // 0.5 second interval
+            
+            GlyphMatrixFrame frame = builder.build();
+            
+            // Animate the frame
+            glyphManager.animate(frame);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error displaying Bitcoin icon matrix: " + e.getMessage(), e);
+        }
+    }
+
+    private void displayBitcoinIconChannels() {
+        try {
+            // Create a frame builder for older phones (channel-based)
             GlyphFrame.Builder builder = glyphManager.getGlyphFrameBuilder();
             
-            // For Phone 3, we need to create a pattern that works with the matrix display
-            // Using the channel indices from the documentation
-            // Phone 3a channels: A1-A11 (20-30), B1-B5 (31-35), C1-C20 (0-19)
-            
+            // For Phone 3a channels: A1-A11 (20-30), B1-B5 (31-35), C1-C20 (0-19)
             // Create a Bitcoin "B" pattern using available channels
+            
             // Top horizontal line - A channels
             builder.buildChannel(25).buildChannel(26).buildChannel(27);
             
@@ -174,13 +269,55 @@ public class BitcoinGlyphToyService extends Service {
             glyphManager.animate(frame);
             
         } catch (Exception e) {
-            Log.e(TAG, "Error displaying Bitcoin icon: " + e.getMessage(), e);
+            Log.e(TAG, "Error displaying Bitcoin icon channels: " + e.getMessage(), e);
         }
     }
 
     private void displayBitcoinPrice() {
         Log.d(TAG, "Displaying Bitcoin price: $" + String.format("%.2f", currentPrice));
         
+        try {
+            if (isPhone3) {
+                displayBitcoinPriceMatrix();
+            } else {
+                displayBitcoinPriceChannels();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error displaying price: " + e.getMessage(), e);
+        }
+    }
+
+    private void displayBitcoinPriceMatrix() {
+        try {
+            // Create a matrix frame for price display
+            GlyphMatrixFrame.Builder builder = new GlyphMatrixFrame.Builder();
+            
+            // Create a simple price indicator pattern
+            boolean[][] matrix = new boolean[25][25];
+            
+            // Simple price indicator - could be enhanced to show actual digits
+            // For now, just show a pattern that indicates price mode
+            for (int i = 10; i < 15; i++) {
+                for (int j = 10; j < 15; j++) {
+                    matrix[i][j] = true;
+                }
+            }
+            
+            builder.buildMatrix(matrix);
+            builder.buildPeriod(2000); // 2 seconds on
+            builder.buildCycles(1);    // Single cycle
+            
+            GlyphMatrixFrame frame = builder.build();
+            
+            // Toggle the frame to show price
+            glyphManager.toggle(frame);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error displaying price matrix: " + e.getMessage(), e);
+        }
+    }
+
+    private void displayBitcoinPriceChannels() {
         try {
             // Create a frame builder for price display
             GlyphFrame.Builder builder = glyphManager.getGlyphFrameBuilder();
@@ -199,7 +336,7 @@ public class BitcoinGlyphToyService extends Service {
             glyphManager.toggle(frame);
             
         } catch (Exception e) {
-            Log.e(TAG, "Error displaying price: " + e.getMessage(), e);
+            Log.e(TAG, "Error displaying price channels: " + e.getMessage(), e);
         }
     }
 
