@@ -3,7 +3,7 @@
     <string name="bitcoin_tracker">Bitcoin Tracker</string>
     <string name="toy_description">Track Bitcoin price with live updates</string>
     
-    <!-- Glyph Toy Metadata -->
-    <string name="glyph_toy_name">Bitcoin Tracker</string>
-    <string name="glyph_toy_summary">Track Bitcoin price with live updates on Nothing Phone 3 glyph interface</string>
+    <!-- Glyph Toy strings -->
+    <string name="toy_name">Bitcoin Tracker</string>
+    <string name="toy_summary">Live Bitcoin price and icon display</string>
 </resources> 

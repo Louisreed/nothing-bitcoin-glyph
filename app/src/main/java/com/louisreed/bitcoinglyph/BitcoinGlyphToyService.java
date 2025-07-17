@@ -1,8 +1,12 @@
 package com.louisreed.bitcoinglyph;
 
 import android.app.Service;
-import android.content.ComponentName;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Typeface;
 import android.os.IBinder;
 import android.os.Handler;
 import android.os.Looper;
@@ -10,79 +14,20 @@ import android.util.Log;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import com.nothing.ketchum.Common;
-import com.nothing.ketchum.GlyphException;
-import com.nothing.ketchum.GlyphFrame;
-import com.nothing.ketchum.GlyphManager;
-import com.nothing.ketchum.Glyph;
+import com.nothing.glyph.matrix.GlyphMatrixManager;
+import com.nothing.glyph.matrix.GlyphMatrixFrame;
+import com.nothing.glyph.matrix.GlyphMatrixObject;
 
 public class BitcoinGlyphToyService extends Service {
     private static final String TAG = "BitcoinGlyphToyService";
     private static final int UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
+    private static final int MATRIX_SIZE = 25; // 25x25 matrix
     
-    private GlyphManager mGlyphManager;
+    private GlyphMatrixManager glyphMatrixManager;
     private Timer priceUpdateTimer;
     private Handler mainHandler;
     private boolean isShowingPrice = false;
-    private boolean isServiceConnected = false;
     private double currentPrice = 0.0;
-    private String deviceType = "Unknown";
-    private boolean isPhone3 = false;
-    
-    private GlyphManager.Callback mCallback = new GlyphManager.Callback() {
-        @Override
-        public void onServiceConnected(ComponentName componentName) {
-            Log.i(TAG, "*** GLYPH SERVICE CONNECTED ***");
-            Log.i(TAG, "Component: " + componentName);
-            isServiceConnected = true;
-            
-            // Register with the appropriate device
-            try {
-                boolean registrationSuccess = false;
-                
-                if (isPhone3) {
-                    registrationSuccess = mGlyphManager.register(Glyph.DEVICE_24111);
-                    deviceType = "Nothing Phone 3 (24111)";
-                    Log.i(TAG, "Detected Nothing Phone 3 - proceeding with registration");
-                } else {
-                    Log.e(TAG, "*** UNSUPPORTED DEVICE - Cannot register with glyph service ***");
-                    return;
-                }
-                
-                Log.i(TAG, "Device type: " + deviceType);
-                Log.i(TAG, "Registration success: " + registrationSuccess);
-                
-                if (registrationSuccess) {
-                    mGlyphManager.openSession();
-                    Log.i(TAG, "*** GLYPH SESSION OPENED SUCCESSFULLY ***");
-                    
-                    // Show initial Bitcoin icon
-                    displayBitcoinIcon();
-                } else {
-                    Log.e(TAG, "*** GLYPH REGISTRATION FAILED ***");
-                }
-                
-            } catch (GlyphException e) {
-                Log.e(TAG, "*** GLYPH INITIALIZATION FAILED: " + e.getMessage() + " ***");
-                e.printStackTrace();
-            }
-        }
-        
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            Log.w(TAG, "*** GLYPH SERVICE DISCONNECTED ***");
-            Log.w(TAG, "Component: " + componentName);
-            isServiceConnected = false;
-            try {
-                if (mGlyphManager != null) {
-                    mGlyphManager.closeSession();
-                    Log.i(TAG, "Glyph session closed");
-                }
-            } catch (GlyphException e) {
-                Log.e(TAG, "Failed to close glyph session: " + e.getMessage());
-            }
-        }
-    };
     
     @Override
     public void onCreate() {
@@ -91,78 +36,49 @@ public class BitcoinGlyphToyService extends Service {
         
         mainHandler = new Handler(Looper.getMainLooper());
         
-        // Log device information
-        Log.i(TAG, "Device info:");
-        Log.i(TAG, "  Nothing Phone 3 (24111): " + Common.is24111());
-        Log.i(TAG, "  Phone 1 (20111): " + Common.is20111());
-        Log.i(TAG, "  Phone 2 (22111): " + Common.is22111());
-        Log.i(TAG, "  Phone 2a (23111): " + Common.is23111());
-        Log.i(TAG, "  Phone 2a+ (23113): " + Common.is23113());
-        Log.i(TAG, "  Device model: " + android.os.Build.MODEL);
-        Log.i(TAG, "  Device brand: " + android.os.Build.BRAND);
-        Log.i(TAG, "  Device product: " + android.os.Build.PRODUCT);
-        Log.i(TAG, "  Device device: " + android.os.Build.DEVICE);
-        
-        // Check for Nothing Phone 3 by model instead of Common.is24111()
-        isPhone3 = android.os.Build.MODEL.equals("A024") || 
-                  android.os.Build.DEVICE.equals("Metroid") ||
-                  android.os.Build.PRODUCT.contains("Metroid") ||
-                  Common.is24111();
-        
-        Log.i(TAG, "  Detected as Nothing Phone 3: " + isPhone3);
-        
-        if (!isPhone3) {
-            Log.e(TAG, "*** UNSUPPORTED DEVICE - This app only supports Nothing Phone 3 ***");
+        // Initialize GlyphMatrix Manager
+        try {
+            glyphMatrixManager = new GlyphMatrixManager(this);
+            Log.i(TAG, "GlyphMatrixManager initialized successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to initialize GlyphMatrixManager: " + e.getMessage());
         }
         
-        // Initialize Glyph Manager
-        Log.i(TAG, "Initializing GlyphManager...");
-        mGlyphManager = GlyphManager.getInstance(getApplicationContext());
-        mGlyphManager.init(mCallback);
-        Log.i(TAG, "GlyphManager initialization started");
-        
+        // Start Bitcoin price updates
         startPriceUpdates();
         
-        // Log service creation to help with debugging
         Log.i(TAG, "*** SERVICE INITIALIZATION COMPLETE ***");
-        Log.i(TAG, "Service package: " + getPackageName());
-        Log.i(TAG, "Service class: " + getClass().getName());
     }
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(TAG, "=== SERVICE STARTED ===");
-        Log.i(TAG, "Intent: " + (intent != null ? intent.toString() : "null"));
-        Log.i(TAG, "Action: " + (intent != null ? intent.getAction() : "null"));
-        Log.i(TAG, "Flags: " + flags + ", StartId: " + startId);
         
-        if (intent != null && intent.getExtras() != null) {
-            Log.i(TAG, "Intent extras: " + intent.getExtras().toString());
-        }
-        
-        // Handle glyph toy specific intents
         if (intent != null) {
             String action = intent.getAction();
+            Log.i(TAG, "Intent action: " + action);
+            
             if ("com.nothing.glyph.TOY".equals(action)) {
-                Log.i(TAG, "*** GLYPH TOY ACTIVATION ***");
-                handleGlyphToyActivation();
+                Log.i(TAG, "*** HANDLING GLYPH TOY ACTIVATION ***");
+                displayBitcoinIcon();
             } else if ("com.nothing.glyph.TOY_LONGPRESS".equals(action)) {
-                Log.i(TAG, "*** GLYPH TOY LONG PRESS ***");
+                Log.i(TAG, "*** HANDLING GLYPH TOY LONG PRESS ***");
                 toggleDisplay();
-            } else if ("android.intent.action.BOOT_COMPLETED".equals(action) ||
-                       "android.intent.action.MY_PACKAGE_REPLACED".equals(action) ||
-                       "android.intent.action.PACKAGE_REPLACED".equals(action)) {
-                Log.i(TAG, "System startup or package replaced - registering service");
             } else {
-                Log.i(TAG, "*** UNKNOWN ACTION: " + action + " - trying activation ***");
-                handleGlyphToyActivation();
+                Log.i(TAG, "Unknown action: " + action + " - showing Bitcoin icon");
+                displayBitcoinIcon();
             }
         } else {
-            Log.i(TAG, "*** NO INTENT - trying activation ***");
-            handleGlyphToyActivation();
+            Log.i(TAG, "No intent - showing Bitcoin icon");
+            displayBitcoinIcon();
         }
         
-        return START_STICKY;
+        return START_NOT_STICKY;
+    }
+    
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
     }
     
     @Override
@@ -172,79 +88,23 @@ public class BitcoinGlyphToyService extends Service {
         
         if (priceUpdateTimer != null) {
             priceUpdateTimer.cancel();
+            priceUpdateTimer = null;
         }
         
-        try {
-            if (mGlyphManager != null && isServiceConnected) {
-                mGlyphManager.turnOff();
-                mGlyphManager.closeSession();
+        if (glyphMatrixManager != null) {
+            try {
+                glyphMatrixManager.close();
+            } catch (Exception e) {
+                Log.e(TAG, "Error closing GlyphMatrixManager: " + e.getMessage());
             }
-        } catch (GlyphException e) {
-            Log.e(TAG, "Failed to cleanup glyph: " + e.getMessage());
-        }
-        
-        if (mGlyphManager != null) {
-            mGlyphManager.unInit();
-        }
-    }
-    
-    @Override
-    public IBinder onBind(Intent intent) {
-        Log.d(TAG, "Service bind requested");
-        return null;
-    }
-    
-    private void handleGlyphToyActivation() {
-        Log.i(TAG, "*** HANDLING GLYPH TOY ACTIVATION ***");
-        Log.i(TAG, "Service connected: " + isServiceConnected);
-        Log.i(TAG, "GlyphManager exists: " + (mGlyphManager != null));
-        
-        if (isServiceConnected) {
-            Log.i(TAG, "Service connected - displaying Bitcoin icon");
-            displayBitcoinIcon();
-        } else {
-            Log.w(TAG, "*** GLYPH SERVICE NOT CONNECTED - INITIALIZING ***");
-            // Try to initialize the glyph manager if not already done
-            if (mGlyphManager == null) {
-                Log.i(TAG, "Creating new GlyphManager instance");
-                mGlyphManager = GlyphManager.getInstance(getApplicationContext());
-                mGlyphManager.init(mCallback);
-            } else {
-                Log.i(TAG, "GlyphManager exists but not connected - reinitializing");
-                mGlyphManager.init(mCallback);
-            }
-        }
-    }
-    
-    private void toggleDisplay() {
-        Log.i(TAG, "*** TOGGLING DISPLAY MODE ***");
-        Log.i(TAG, "Current mode: " + (isShowingPrice ? "PRICE" : "ICON"));
-        
-        isShowingPrice = !isShowingPrice;
-        
-        Log.i(TAG, "New mode: " + (isShowingPrice ? "PRICE" : "ICON"));
-        Log.i(TAG, "Service connected: " + isServiceConnected);
-        
-        if (isServiceConnected) {
-            if (isShowingPrice) {
-                Log.i(TAG, "Switching to price display");
-                displayPrice();
-            } else {
-                Log.i(TAG, "Switching to icon display");
-                displayBitcoinIcon();
-            }
-        } else {
-            Log.e(TAG, "*** CANNOT TOGGLE - SERVICE NOT CONNECTED ***");
         }
     }
     
     private void startPriceUpdates() {
-        if (priceUpdateTimer != null) {
-            priceUpdateTimer.cancel();
-        }
+        Log.i(TAG, "Starting Bitcoin price updates");
         
         priceUpdateTimer = new Timer();
-        priceUpdateTimer.scheduleAtFixedRate(new TimerTask() {
+        priceUpdateTimer.schedule(new TimerTask() {
             @Override
             public void run() {
                 fetchBitcoinPrice();
@@ -253,105 +113,151 @@ public class BitcoinGlyphToyService extends Service {
     }
     
     private void fetchBitcoinPrice() {
-        // TODO: Implement actual Bitcoin price fetching from API
-        // For now, simulate a price
-        currentPrice = 45000.0 + (Math.random() * 10000.0);
+        // Simulate fetching price (in real app, you'd make HTTP request)
+        currentPrice = 45000 + (Math.random() * 20000); // Random price between 45k-65k
+        Log.d(TAG, "Bitcoin price updated: $" + String.format("%.2f", currentPrice));
         
-        mainHandler.post(() -> {
-            Log.d(TAG, "Bitcoin price updated: $" + String.format("%.2f", currentPrice));
-            if (isShowingPrice) {
-                displayPrice();
-            }
-        });
-    }
-    
-    private void displayPrice() {
-        if (!isServiceConnected || mGlyphManager == null) {
-            Log.w(TAG, "Glyph service not connected, cannot display price");
-            return;
-        }
-        
-        try {
-            Log.i(TAG, "Building price display frame for device: " + deviceType);
-            GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
-            GlyphFrame frame = null;
-            
-            // Create price pattern for Nothing Phone 3
-            Log.i(TAG, "Creating Nothing Phone 3 price pattern");
-            frame = builder
-                .buildChannelB()    // B1-B5 (use B channels for price display)
-                .buildPeriod(2000)
-                .buildCycles(1)
-                .build();
-            
-            if (frame != null) {
-                Log.i(TAG, "Price frame built successfully, sending animate command");
-                mGlyphManager.animate(frame);
-                Log.i(TAG, "Displaying price: $" + String.format("%.0f", currentPrice));
-            } else {
-                Log.e(TAG, "*** FAILED TO BUILD PRICE FRAME - FRAME IS NULL ***");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to display price: " + e.getMessage());
-            e.printStackTrace();
+        // Update display if showing price
+        if (isShowingPrice) {
+            mainHandler.post(this::displayPrice);
         }
     }
     
     private void displayBitcoinIcon() {
         Log.i(TAG, "*** DISPLAYING BITCOIN ICON ***");
-        Log.i(TAG, "Service connected: " + isServiceConnected);
-        Log.i(TAG, "GlyphManager exists: " + (mGlyphManager != null));
-        Log.i(TAG, "Device type: " + deviceType);
         
-        if (!isServiceConnected || mGlyphManager == null) {
-            Log.e(TAG, "*** CANNOT DISPLAY ICON - SERVICE NOT READY ***");
+        if (glyphMatrixManager == null) {
+            Log.e(TAG, "GlyphMatrixManager is null");
             return;
         }
         
         try {
-            Log.i(TAG, "Building glyph frame for device: " + deviceType);
-            GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
-            GlyphFrame frame = null;
+            // Create a 25x25 bitmap with Bitcoin symbol
+            Bitmap bitcoinBitmap = createBitcoinIconBitmap();
             
-            // Create Bitcoin pattern for Nothing Phone 3
-            Log.i(TAG, "Creating Nothing Phone 3 Bitcoin pattern");
-            frame = builder
-                .buildChannelA()    // A1-A11 (camera strip)
-                .buildChannelB()    // B1-B5 (top section)
-                .buildChannelC()    // C1-C20 (main body)
-                .buildPeriod(1000)
-                .buildCycles(3)
-                .buildInterval(500)
-                .build();
+            // Convert bitmap to GlyphMatrixObject
+            GlyphMatrixObject matrixObject = GlyphMatrixObject.fromBitmap(bitcoinBitmap);
             
-            if (frame != null) {
-                Log.i(TAG, "Frame built successfully, sending animate command");
-                mGlyphManager.animate(frame);
-                Log.i(TAG, "*** BITCOIN ICON ANIMATION SENT SUCCESSFULLY ***");
-            } else {
-                Log.e(TAG, "*** FAILED TO BUILD FRAME - FRAME IS NULL ***");
-            }
+            // Create GlyphMatrixFrame with the object
+            GlyphMatrixFrame frame = new GlyphMatrixFrame.Builder()
+                    .addObject(matrixObject)
+                    .setDuration(3000) // 3 seconds
+                    .build();
+            
+            // Display the frame
+            glyphMatrixManager.setMatrixFrame(frame);
+            
+            isShowingPrice = false;
+            Log.i(TAG, "*** BITCOIN ICON DISPLAYED SUCCESSFULLY ***");
             
         } catch (Exception e) {
-            Log.e(TAG, "*** FAILED TO DISPLAY BITCOIN ICON ***");
-            Log.e(TAG, "Error: " + e.getMessage());
+            Log.e(TAG, "Error displaying Bitcoin icon: " + e.getMessage());
             e.printStackTrace();
-            
-            // Fallback: try simple toggle
-            try {
-                Log.i(TAG, "Fallback: Trying simple toggle...");
-                GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
-                GlyphFrame simpleFrame = builder.buildChannelA().build();
-                mGlyphManager.toggle(simpleFrame);
-                Log.i(TAG, "Simple toggle sent");
-            } catch (Exception e2) {
-                Log.e(TAG, "Simple toggle also failed: " + e2.getMessage());
-            }
         }
     }
     
-    public void onLongPress() {
-        Log.d(TAG, "Long press detected - toggling display mode");
-        toggleDisplay();
+    private void displayPrice() {
+        Log.i(TAG, "*** DISPLAYING BITCOIN PRICE ***");
+        
+        if (glyphMatrixManager == null) {
+            Log.e(TAG, "GlyphMatrixManager is null");
+            return;
+        }
+        
+        try {
+            // Create a 25x25 bitmap with price text
+            Bitmap priceBitmap = createPriceBitmap();
+            
+            // Convert bitmap to GlyphMatrixObject
+            GlyphMatrixObject matrixObject = GlyphMatrixObject.fromBitmap(priceBitmap);
+            
+            // Create GlyphMatrixFrame with the object
+            GlyphMatrixFrame frame = new GlyphMatrixFrame.Builder()
+                    .addObject(matrixObject)
+                    .setDuration(5000) // 5 seconds
+                    .build();
+            
+            // Display the frame
+            glyphMatrixManager.setMatrixFrame(frame);
+            
+            isShowingPrice = true;
+            Log.i(TAG, "*** BITCOIN PRICE DISPLAYED SUCCESSFULLY ***");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error displaying Bitcoin price: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private void toggleDisplay() {
+        Log.i(TAG, "*** TOGGLING DISPLAY MODE ***");
+        
+        if (isShowingPrice) {
+            displayBitcoinIcon();
+        } else {
+            displayPrice();
+        }
+    }
+    
+    private Bitmap createBitcoinIconBitmap() {
+        Bitmap bitmap = Bitmap.createBitmap(MATRIX_SIZE, MATRIX_SIZE, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        
+        // Clear background
+        canvas.drawColor(Color.BLACK);
+        
+        // Create paint for Bitcoin symbol
+        Paint paint = new Paint();
+        paint.setColor(Color.WHITE);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(2f);
+        paint.setAntiAlias(true);
+        
+        // Draw Bitcoin symbol (₿)
+        // Outer circle
+        canvas.drawCircle(MATRIX_SIZE / 2f, MATRIX_SIZE / 2f, MATRIX_SIZE / 2f - 2, paint);
+        
+        // Bitcoin "B" shape
+        paint.setStyle(Paint.Style.FILL);
+        paint.setTextSize(MATRIX_SIZE / 2f);
+        paint.setTypeface(Typeface.DEFAULT_BOLD);
+        
+        // Center the "B" text
+        float textX = MATRIX_SIZE / 2f - paint.measureText("B") / 2f;
+        float textY = MATRIX_SIZE / 2f + paint.getTextSize() / 3f;
+        canvas.drawText("B", textX, textY, paint);
+        
+        // Add vertical lines for Bitcoin symbol
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(1f);
+        canvas.drawLine(MATRIX_SIZE / 2f, 3, MATRIX_SIZE / 2f, 7, paint);
+        canvas.drawLine(MATRIX_SIZE / 2f, MATRIX_SIZE - 7, MATRIX_SIZE / 2f, MATRIX_SIZE - 3, paint);
+        
+        return bitmap;
+    }
+    
+    private Bitmap createPriceBitmap() {
+        Bitmap bitmap = Bitmap.createBitmap(MATRIX_SIZE, MATRIX_SIZE, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        
+        // Clear background
+        canvas.drawColor(Color.BLACK);
+        
+        // Create paint for price text
+        Paint paint = new Paint();
+        paint.setColor(Color.WHITE);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setTextSize(6f); // Small text to fit in 25x25
+        paint.setAntiAlias(true);
+        
+        // Format price (e.g., "45K")
+        String priceText = String.format("%.0fK", currentPrice / 1000);
+        
+        // Center the text
+        float textX = MATRIX_SIZE / 2f - paint.measureText(priceText) / 2f;
+        float textY = MATRIX_SIZE / 2f + paint.getTextSize() / 3f;
+        canvas.drawText(priceText, textX, textY, paint);
+        
+        return bitmap;
     }
 } 

@@ -5,8 +5,7 @@
     <!-- Required permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="com.nothing.ketchum.permission.ENABLE"/>
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="com.nothing.glyph.permission.MATRIX"/>
 
     <application
         android:allowBackup="true"
@@ -37,58 +36,32 @@
         </activity>
 
         <!-- Bitcoin Glyph Toy Service -->
-        <service 
+        <service
             android:name=".BitcoinGlyphToyService"
-            android:exported="true"
-            android:enabled="true">
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.nothing.glyph.TOY"/>
-                <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
             
-            <!-- Long press intent filter -->
-            <intent-filter>
-                <action android:name="com.nothing.glyph.TOY_LONGPRESS"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
-            
-            <!-- Additional intent filters for discovery -->
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-                <action android:name="android.intent.action.PACKAGE_REPLACED"/>
-                <data android:scheme="package"/>
-            </intent-filter>
-            
-            <!-- Required: Toy name -->
+            <!-- Required: Ensures the toy appears in the Glyph Toys manager list -->
             <meta-data
                 android:name="com.nothing.glyph.toy.name"
-                android:resource="@string/glyph_toy_name"/>
+                android:resource="@string/toy_name"/>
             
-            <!-- Required: Preview thumbnail -->
+            <!-- Required: Allows users to preview your toy in the settings -->
             <meta-data
                 android:name="com.nothing.glyph.toy.image"
-                android:resource="@drawable/bitcoin_preview"/>
+                android:resource="@drawable/ic_launcher_foreground"/>
             
-            <!-- Optional: Description -->
+            <!-- Optional: Provides a brief description of your toy -->
             <meta-data
                 android:name="com.nothing.glyph.toy.summary"
-                android:resource="@string/glyph_toy_summary"/>
+                android:resource="@string/toy_summary"/>
             
-            <!-- Enable long press functionality -->
+            <!-- Optional: Enables long press functionality -->
             <meta-data
                 android:name="com.nothing.glyph.toy.longpress"
-                android:value="true"/>
-            
-            <!-- Display order in toy list -->
-            <meta-data
-                android:name="com.nothing.glyph.toy.order"
-                android:value="100"/>
-            
-            <!-- Mark as active/enabled -->
-            <meta-data
-                android:name="com.nothing.glyph.toy.active"
-                android:value="true"/>
+                android:value="1"/>
         </service>
 
     </application>
