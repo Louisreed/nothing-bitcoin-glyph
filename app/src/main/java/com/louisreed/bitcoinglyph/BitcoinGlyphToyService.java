@@ -11,6 +11,7 @@ import java.util.TimerTask;
 
 // Using the correct matrix SDK classes for Nothing Phone 3
 import com.nothing.ketchum.Common;
+import com.nothing.ketchum.Glyph;
 import com.nothing.ketchum.GlyphException;
 import com.nothing.ketchum.GlyphMatrixManager;
 import com.nothing.ketchum.GlyphMatrixFrame;
@@ -72,15 +73,8 @@ public class BitcoinGlyphToyService extends Service {
             isServiceConnected = true;
             
             // Register for Phone 3 matrix
-            if (glyphMatrixManager.register()) {
+            if (glyphMatrixManager.register(Glyph.DEVICE_24111)) {
                 Log.i(TAG, "Successfully registered for Phone 3 matrix");
-                
-                try {
-                    glyphMatrixManager.openSession();
-                    Log.i(TAG, "Glyph matrix session opened successfully");
-                } catch (GlyphException e) {
-                    Log.e(TAG, "Error opening Glyph matrix session: " + e.getMessage(), e);
-                }
             } else {
                 Log.e(TAG, "Failed to register for Phone 3 matrix");
             }
@@ -156,20 +150,22 @@ public class BitcoinGlyphToyService extends Service {
             // Create Bitcoin icon pattern as boolean array
             boolean[][] bitcoinPattern = createBitcoinIconPattern();
             
-            // Create GlyphMatrixObject with the pattern
-            GlyphMatrixObject matrixObject = new GlyphMatrixObject(bitcoinPattern);
+            // Create GlyphMatrixObject using builder
+            GlyphMatrixObject.Builder objectBuilder = new GlyphMatrixObject.Builder();
+            objectBuilder.setMatrixData(bitcoinPattern);
+            GlyphMatrixObject matrixObject = objectBuilder.build(this);
             
             // Create GlyphMatrixFrame with animation settings
-            GlyphMatrixFrame.Builder builder = new GlyphMatrixFrame.Builder();
-            builder.setGlyphMatrixObject(matrixObject);
-            builder.setPeriod(1000); // 1 second on
-            builder.setCycles(3);    // 3 cycles
-            builder.setInterval(500); // 0.5 second interval
+            GlyphMatrixFrame.Builder frameBuilder = new GlyphMatrixFrame.Builder();
+            frameBuilder.buildGlyphMatrixObject(matrixObject);
+            frameBuilder.buildPeriod(1000); // 1 second on
+            frameBuilder.buildCycles(3);    // 3 cycles
+            frameBuilder.buildInterval(500); // 0.5 second interval
             
-            GlyphMatrixFrame frame = builder.build();
+            GlyphMatrixFrame frame = frameBuilder.build(this);
             
             // Display the matrix frame
-            glyphMatrixManager.displayMatrixFrame(frame);
+            glyphMatrixManager.toggle(frame);
             
             Log.i(TAG, "*** BITCOIN ICON MATRIX DISPLAYED SUCCESSFULLY ***");
             
@@ -193,19 +189,21 @@ public class BitcoinGlyphToyService extends Service {
             // Create price pattern as boolean array
             boolean[][] pricePattern = createPricePattern();
             
-            // Create GlyphMatrixObject with the pattern
-            GlyphMatrixObject matrixObject = new GlyphMatrixObject(pricePattern);
+            // Create GlyphMatrixObject using builder
+            GlyphMatrixObject.Builder objectBuilder = new GlyphMatrixObject.Builder();
+            objectBuilder.setMatrixData(pricePattern);
+            GlyphMatrixObject matrixObject = objectBuilder.build(this);
             
             // Create GlyphMatrixFrame with animation settings
-            GlyphMatrixFrame.Builder builder = new GlyphMatrixFrame.Builder();
-            builder.setGlyphMatrixObject(matrixObject);
-            builder.setPeriod(2000); // 2 seconds on
-            builder.setCycles(1);    // Single cycle
+            GlyphMatrixFrame.Builder frameBuilder = new GlyphMatrixFrame.Builder();
+            frameBuilder.buildGlyphMatrixObject(matrixObject);
+            frameBuilder.buildPeriod(2000); // 2 seconds on
+            frameBuilder.buildCycles(1);    // Single cycle
             
-            GlyphMatrixFrame frame = builder.build();
+            GlyphMatrixFrame frame = frameBuilder.build(this);
             
             // Display the matrix frame
-            glyphMatrixManager.displayMatrixFrame(frame);
+            glyphMatrixManager.toggle(frame);
             
             Log.i(TAG, "*** PRICE MATRIX DISPLAYED SUCCESSFULLY ***");
             
@@ -328,9 +326,8 @@ public class BitcoinGlyphToyService extends Service {
         
         if (glyphMatrixManager != null && isServiceConnected) {
             try {
-                glyphMatrixManager.closeSession();
                 glyphMatrixManager.unInit();
-            } catch (GlyphException e) {
+            } catch (Exception e) {
                 Log.e(TAG, "Error during cleanup: " + e.getMessage(), e);
             }
         }
