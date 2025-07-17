@@ -157,17 +157,19 @@ public class BitcoinGlyphToyService extends Service {
             GlyphFrame.Builder builder = glyphManager.getGlyphFrameBuilder();
             
             // Create a Bitcoin pattern using available channels
-            // Use A channels (camera strip) for top accent
-            builder.buildChannel(Glyph.A1).buildChannel(Glyph.A5).buildChannel(Glyph.A11);
+            // Phone 3a/3a Pro: A1-A11 (indices 20-30), B1-B5 (indices 31-35), C1-C20 (indices 0-19)
             
-            // Use B channels (top section) for middle accent
-            builder.buildChannel(Glyph.B1).buildChannel(Glyph.B3).buildChannel(Glyph.B5);
+            // Use A channels (camera strip) for top accent - indices 20, 24, 30
+            builder.buildChannel(20).buildChannel(24).buildChannel(30);
             
-            // Use C channels (main body) for Bitcoin "B" pattern
-            builder.buildChannel(Glyph.C1).buildChannel(Glyph.C2).buildChannel(Glyph.C3)
-                   .buildChannel(Glyph.C6).buildChannel(Glyph.C7).buildChannel(Glyph.C8)
-                   .buildChannel(Glyph.C11).buildChannel(Glyph.C12).buildChannel(Glyph.C13)
-                   .buildChannel(Glyph.C16).buildChannel(Glyph.C17).buildChannel(Glyph.C18);
+            // Use B channels (top section) for middle accent - indices 31, 33, 35
+            builder.buildChannel(31).buildChannel(33).buildChannel(35);
+            
+            // Use C channels (main body) for Bitcoin "B" pattern - indices 0-19
+            builder.buildChannel(0).buildChannel(1).buildChannel(2)
+                   .buildChannel(5).buildChannel(6).buildChannel(7)
+                   .buildChannel(10).buildChannel(11).buildChannel(12)
+                   .buildChannel(15).buildChannel(16).buildChannel(17);
             
             // Set animation parameters
             builder.buildPeriod(1000)  // 1 second on
@@ -199,9 +201,9 @@ public class BitcoinGlyphToyService extends Service {
             
             GlyphFrame.Builder builder = glyphManager.getGlyphFrameBuilder();
             
-            // Use B channels (top section) for price indication
-            builder.buildChannel(Glyph.B1).buildChannel(Glyph.B2).buildChannel(Glyph.B3)
-                   .buildChannel(Glyph.B4).buildChannel(Glyph.B5);
+            // Use B channels (top section) for price indication - indices 31-35
+            builder.buildChannel(31).buildChannel(32).buildChannel(33)
+                   .buildChannel(34).buildChannel(35);
             
             // Set display parameters
             builder.buildPeriod(2000)  // 2 seconds on
