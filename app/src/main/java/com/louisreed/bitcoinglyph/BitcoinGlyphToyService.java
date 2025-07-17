@@ -27,6 +27,7 @@ public class BitcoinGlyphToyService extends Service {
     private boolean isServiceConnected = false;
     private double currentPrice = 0.0;
     private String deviceType = "Unknown";
+    private boolean isPhone3 = false;
     
     private GlyphManager.Callback mCallback = new GlyphManager.Callback() {
         @Override
@@ -39,13 +40,12 @@ public class BitcoinGlyphToyService extends Service {
             try {
                 boolean registrationSuccess = false;
                 
-                if (Common.is24111()) {
+                if (isPhone3) {
                     registrationSuccess = mGlyphManager.register(Glyph.DEVICE_24111);
                     deviceType = "Nothing Phone 3 (24111)";
-                    Log.i(TAG, "Detected Nothing Phone 3");
+                    Log.i(TAG, "Detected Nothing Phone 3 - proceeding with registration");
                 } else {
-                    Log.e(TAG, "*** UNSUPPORTED DEVICE - This app only supports Nothing Phone 3 ***");
-                    Log.e(TAG, "Phone 3 detection: " + Common.is24111());
+                    Log.e(TAG, "*** UNSUPPORTED DEVICE - Cannot register with glyph service ***");
                     return;
                 }
                 
@@ -94,8 +94,24 @@ public class BitcoinGlyphToyService extends Service {
         // Log device information
         Log.i(TAG, "Device info:");
         Log.i(TAG, "  Nothing Phone 3 (24111): " + Common.is24111());
+        Log.i(TAG, "  Phone 1 (20111): " + Common.is20111());
+        Log.i(TAG, "  Phone 2 (22111): " + Common.is22111());
+        Log.i(TAG, "  Phone 2a (23111): " + Common.is23111());
+        Log.i(TAG, "  Phone 2a+ (23113): " + Common.is23113());
+        Log.i(TAG, "  Device model: " + android.os.Build.MODEL);
+        Log.i(TAG, "  Device brand: " + android.os.Build.BRAND);
+        Log.i(TAG, "  Device product: " + android.os.Build.PRODUCT);
+        Log.i(TAG, "  Device device: " + android.os.Build.DEVICE);
         
-        if (!Common.is24111()) {
+        // Check for Nothing Phone 3 by model instead of Common.is24111()
+        isPhone3 = android.os.Build.MODEL.equals("A024") || 
+                  android.os.Build.DEVICE.equals("Metroid") ||
+                  android.os.Build.PRODUCT.contains("Metroid") ||
+                  Common.is24111();
+        
+        Log.i(TAG, "  Detected as Nothing Phone 3: " + isPhone3);
+        
+        if (!isPhone3) {
             Log.e(TAG, "*** UNSUPPORTED DEVICE - This app only supports Nothing Phone 3 ***");
         }
         
