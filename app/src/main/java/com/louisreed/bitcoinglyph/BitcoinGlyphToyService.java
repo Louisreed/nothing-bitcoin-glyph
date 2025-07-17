@@ -15,6 +15,8 @@ import com.nothing.ketchum.Glyph;
 import com.nothing.ketchum.GlyphException;
 import com.nothing.ketchum.GlyphFrame;
 import com.nothing.ketchum.GlyphMatrixFrame;
+import com.nothing.ketchum.GlyphMatrixManager;
+import com.nothing.ketchum.GlyphMatrixObject;
 import com.nothing.ketchum.GlyphManager;
 
 public class BitcoinGlyphToyService extends Service {
@@ -22,6 +24,7 @@ public class BitcoinGlyphToyService extends Service {
     private static final int UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
     private GlyphManager glyphManager;
+    private GlyphMatrixManager glyphMatrixManager;
     private Timer priceUpdateTimer;
     private Handler mainHandler;
     private boolean isShowingIcon = true;
@@ -66,39 +69,87 @@ public class BitcoinGlyphToyService extends Service {
 
     private void initializeGlyphManager() {
         try {
+            // Check device type to determine API usage
+            // Phone 3 (A024/Metroid) uses matrix API, others use channel API
+            String model = android.os.Build.MODEL;
+            String device = android.os.Build.DEVICE;
+            
+            Log.d(TAG, "Device model: " + model + ", device: " + device);
+            
+            // Phone 3 detection: model A024 or device Metroid
+            if ("A024".equals(model) || "Metroid".equals(device)) {
+                isPhone3 = true;
+                Log.d(TAG, "Detected Nothing Phone 3 - using matrix API");
+                initializeMatrixManager();
+            } else {
+                Log.d(TAG, "Detected older Nothing phone - using channel API");
+                initializeChannelManager();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing glyph manager: " + e.getMessage(), e);
+        }
+    }
+
+    private void initializeMatrixManager() {
+        try {
+            glyphMatrixManager = GlyphMatrixManager.getInstance(getApplicationContext());
+            glyphMatrixManager.init(new GlyphMatrixManager.Callback() {
+                @Override
+                public void onServiceConnected(android.content.ComponentName componentName) {
+                    Log.d(TAG, "Glyph Matrix service connected");
+                    try {
+                        glyphMatrixManager.register();
+                        glyphMatrixManager.openSession();
+                        isInitialized = true;
+                        
+                        // Start price updates
+                        startPriceUpdates();
+                        
+                        // Show initial display
+                        displayBitcoinIcon();
+                        
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error initializing matrix manager: " + e.getMessage(), e);
+                    }
+                }
+
+                @Override
+                public void onServiceDisconnected(android.content.ComponentName componentName) {
+                    Log.d(TAG, "Glyph Matrix service disconnected");
+                    isInitialized = false;
+                    try {
+                        glyphMatrixManager.closeSession();
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error closing matrix session: " + e.getMessage(), e);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating matrix manager: " + e.getMessage(), e);
+        }
+    }
+
+    private void initializeChannelManager() {
+        try {
             glyphManager = GlyphManager.getInstance(getApplicationContext());
             glyphManager.init(new GlyphManager.Callback() {
                 @Override
                 public void onServiceConnected(android.content.ComponentName componentName) {
                     Log.d(TAG, "Glyph service connected");
                     try {
-                        // Check device type to determine API usage
-                        // Phone 3 (A024/Metroid) uses matrix API, others use channel API
-                        String model = android.os.Build.MODEL;
-                        String device = android.os.Build.DEVICE;
-                        
-                        Log.d(TAG, "Device model: " + model + ", device: " + device);
-                        
-                        // Phone 3 detection: model A024 or device Metroid
-                        if ("A024".equals(model) || "Metroid".equals(device)) {
-                            isPhone3 = true;
-                            Log.d(TAG, "Detected Nothing Phone 3 - using matrix API");
-                            glyphManager.register();
+                        // Use old channel-based API for other phones
+                        if (Common.is20111()) {
+                            glyphManager.register(Glyph.DEVICE_20111);
+                        } else if (Common.is22111()) {
+                            glyphManager.register(Glyph.DEVICE_22111);
+                        } else if (Common.is23111()) {
+                            glyphManager.register(Glyph.DEVICE_23111);
+                        } else if (Common.is23113()) {
+                            glyphManager.register(Glyph.DEVICE_23113);
+                        } else if (Common.is24111()) {
+                            glyphManager.register(Glyph.DEVICE_24111);
                         } else {
-                            // Use old channel-based API for other phones
-                            if (Common.is20111()) {
-                                glyphManager.register(Glyph.DEVICE_20111);
-                            } else if (Common.is22111()) {
-                                glyphManager.register(Glyph.DEVICE_22111);
-                            } else if (Common.is23111()) {
-                                glyphManager.register(Glyph.DEVICE_23111);
-                            } else if (Common.is23113()) {
-                                glyphManager.register(Glyph.DEVICE_23113);
-                            } else if (Common.is24111()) {
-                                glyphManager.register(Glyph.DEVICE_24111);
-                            } else {
-                                glyphManager.register();
-                            }
+                            glyphManager.register();
                         }
                         
                         glyphManager.openSession();
@@ -111,7 +162,7 @@ public class BitcoinGlyphToyService extends Service {
                         displayBitcoinIcon();
                         
                     } catch (Exception e) {
-                        Log.e(TAG, "Error initializing glyph manager: " + e.getMessage(), e);
+                        Log.e(TAG, "Error initializing channel manager: " + e.getMessage(), e);
                     }
                 }
 
@@ -122,12 +173,12 @@ public class BitcoinGlyphToyService extends Service {
                     try {
                         glyphManager.closeSession();
                     } catch (Exception e) {
-                        Log.e(TAG, "Error closing session: " + e.getMessage(), e);
+                        Log.e(TAG, "Error closing channel session: " + e.getMessage(), e);
                     }
                 }
             });
         } catch (Exception e) {
-            Log.e(TAG, "Error creating glyph manager: " + e.getMessage(), e);
+            Log.e(TAG, "Error creating channel manager: " + e.getMessage(), e);
         }
     }
 
@@ -181,8 +232,8 @@ public class BitcoinGlyphToyService extends Service {
 
     private void displayBitcoinIconMatrix() {
         try {
-            // Create a matrix frame for Phone 3's 25x25 display
-            GlyphMatrixFrame.Builder builder = new GlyphMatrixFrame.Builder();
+            // Create a matrix object for Phone 3's 25x25 display
+            GlyphMatrixObject.Builder matrixBuilder = new GlyphMatrixObject.Builder(getApplicationContext());
             
             // Create a Bitcoin "B" pattern using 25x25 matrix
             // This is a simplified pattern - you can create more complex ones
@@ -223,16 +274,19 @@ public class BitcoinGlyphToyService extends Service {
                 matrix[i][16] = true;
             }
             
-            // Convert boolean matrix to the format expected by GlyphMatrixFrame
-            builder.buildMatrix(matrix);
-            builder.buildPeriod(1000); // 1 second on
-            builder.buildCycles(3);    // 3 cycles
-            builder.buildInterval(500); // 0.5 second interval
+            // Convert boolean matrix to GlyphMatrixObject
+            GlyphMatrixObject matrixObject = matrixBuilder.build();
             
-            GlyphMatrixFrame frame = builder.build();
+            // Create a frame with animation properties
+            GlyphMatrixFrame.Builder frameBuilder = new GlyphMatrixFrame.Builder(getApplicationContext());
+            frameBuilder.buildPeriod(1000); // 1 second on
+            frameBuilder.buildCycles(3);    // 3 cycles
+            frameBuilder.buildInterval(500); // 0.5 second interval
+            
+            GlyphMatrixFrame frame = frameBuilder.build();
             
             // Animate the frame
-            glyphManager.animate(frame);
+            glyphMatrixManager.animate(matrixObject, frame);
             
         } catch (Exception e) {
             Log.e(TAG, "Error displaying Bitcoin icon matrix: " + e.getMessage(), e);
@@ -289,8 +343,8 @@ public class BitcoinGlyphToyService extends Service {
 
     private void displayBitcoinPriceMatrix() {
         try {
-            // Create a matrix frame for price display
-            GlyphMatrixFrame.Builder builder = new GlyphMatrixFrame.Builder();
+            // Create a matrix object for price display
+            GlyphMatrixObject.Builder matrixBuilder = new GlyphMatrixObject.Builder(getApplicationContext());
             
             // Create a simple price indicator pattern
             boolean[][] matrix = new boolean[25][25];
@@ -303,14 +357,17 @@ public class BitcoinGlyphToyService extends Service {
                 }
             }
             
-            builder.buildMatrix(matrix);
-            builder.buildPeriod(2000); // 2 seconds on
-            builder.buildCycles(1);    // Single cycle
+            GlyphMatrixObject matrixObject = matrixBuilder.build();
             
-            GlyphMatrixFrame frame = builder.build();
+            // Create a frame with animation properties
+            GlyphMatrixFrame.Builder frameBuilder = new GlyphMatrixFrame.Builder(getApplicationContext());
+            frameBuilder.buildPeriod(2000); // 2 seconds on
+            frameBuilder.buildCycles(1);    // Single cycle
+            
+            GlyphMatrixFrame frame = frameBuilder.build();
             
             // Toggle the frame to show price
-            glyphManager.toggle(frame);
+            glyphMatrixManager.toggle(matrixObject, frame);
             
         } catch (Exception e) {
             Log.e(TAG, "Error displaying price matrix: " + e.getMessage(), e);
@@ -348,13 +405,21 @@ public class BitcoinGlyphToyService extends Service {
             priceUpdateTimer.cancel();
         }
         
-        if (glyphManager != null && isInitialized) {
+        if (isPhone3 && glyphMatrixManager != null && isInitialized) {
+            try {
+                glyphMatrixManager.turnOff();
+                glyphMatrixManager.closeSession();
+                glyphMatrixManager.unInit();
+            } catch (Exception e) {
+                Log.e(TAG, "Error cleaning up matrix manager: " + e.getMessage(), e);
+            }
+        } else if (glyphManager != null && isInitialized) {
             try {
                 glyphManager.turnOff();
                 glyphManager.closeSession();
                 glyphManager.unInit();
             } catch (Exception e) {
-                Log.e(TAG, "Error cleaning up glyph manager: " + e.getMessage(), e);
+                Log.e(TAG, "Error cleaning up channel manager: " + e.getMessage(), e);
             }
         }
         
