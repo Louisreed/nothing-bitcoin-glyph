@@ -46,9 +46,6 @@ dependencies {
     // Nothing Glyph SDK - Official AAR from Nothing Developer Programme
     implementation files('libs/GlyphMatrixSDK.aar')
     
-    // Nothing Ketchum SDK - Base SDK for Glyph functionality
-    implementation files('../libs/KetchumSDK_Community_20250319.jar')
-    
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
