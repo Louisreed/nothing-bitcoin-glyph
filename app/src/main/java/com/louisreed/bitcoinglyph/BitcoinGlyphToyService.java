@@ -263,9 +263,7 @@ public class BitcoinGlyphToyService extends Service {
             // Create price pattern for Nothing Phone 3
             Log.i(TAG, "Creating Nothing Phone 3 price pattern");
             frame = builder
-                .buildChannel(Glyph.B1)
-                .buildChannel(Glyph.B2)
-                .buildChannel(Glyph.B3)
+                .buildChannelB()    // B1-B5 (use B channels for price display)
                 .buildPeriod(2000)
                 .buildCycles(1)
                 .build();
@@ -302,17 +300,9 @@ public class BitcoinGlyphToyService extends Service {
             // Create Bitcoin pattern for Nothing Phone 3
             Log.i(TAG, "Creating Nothing Phone 3 Bitcoin pattern");
             frame = builder
-                .buildChannel(Glyph.A1)
-                .buildChannel(Glyph.A5)
-                .buildChannel(Glyph.A11)
-                .buildChannel(Glyph.B1)
-                .buildChannel(Glyph.B3)
-                .buildChannel(Glyph.B5)
-                .buildChannel(Glyph.C1)
-                .buildChannel(Glyph.C5)
-                .buildChannel(Glyph.C10)
-                .buildChannel(Glyph.C15)
-                .buildChannel(Glyph.C20)
+                .buildChannelA()    // A1-A11 (camera strip)
+                .buildChannelB()    // B1-B5 (top section)
+                .buildChannelC()    // C1-C20 (main body)
                 .buildPeriod(1000)
                 .buildCycles(3)
                 .buildInterval(500)
@@ -335,7 +325,7 @@ public class BitcoinGlyphToyService extends Service {
             try {
                 Log.i(TAG, "Fallback: Trying simple toggle...");
                 GlyphFrame.Builder builder = mGlyphManager.getGlyphFrameBuilder();
-                GlyphFrame simpleFrame = builder.buildChannel(Glyph.A1).build();
+                GlyphFrame simpleFrame = builder.buildChannelA().build();
                 mGlyphManager.toggle(simpleFrame);
                 Log.i(TAG, "Simple toggle sent");
             } catch (Exception e2) {

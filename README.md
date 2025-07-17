@@ -63,18 +63,18 @@ A Bitcoin price tracker toy for the Nothing Phone 3 that displays live Bitcoin p
 
 ### Bitcoin Icon Mode (Default)
 
-The Bitcoin icon uses the following Nothing Phone 3 Glyph Matrix LEDs:
+The Bitcoin icon uses the following Nothing Phone 3 Glyph Matrix channels:
 
-- **A channels**: A1, A5, A11 (camera strip)
-- **B channels**: B1, B3, B5 (top section)
-- **C channels**: C1, C5, C10, C15, C20 (main body)
+- **A channels**: A1-A11 (camera strip)
+- **B channels**: B1-B5 (top section)
+- **C channels**: C1-C20 (main body)
 - **Animation**: 3 cycles, 1 second on, 0.5 second interval
 
 ### Price Display Mode (Long Press)
 
 The price display uses:
 
-- **B channels**: B1, B2, B3 (top section)
+- **B channels**: B1-B5 (top section)
 - **Animation**: Single cycle, 2 seconds on
 
 ## Development
