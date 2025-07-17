@@ -5,7 +5,7 @@
     <!-- Required permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="com.nothing.glyph.permission.MATRIX"/>
+    <uses-permission android:name="com.nothing.ketchum.permission.ENABLE"/>
 
     <application
         android:allowBackup="true"
@@ -51,7 +51,7 @@
             <!-- Required: Allows users to preview your toy in the settings -->
             <meta-data
                 android:name="com.nothing.glyph.toy.image"
-                android:resource="@drawable/ic_launcher_foreground"/>
+                android:resource="@drawable/bitcoin_preview"/>
             
             <!-- Optional: Provides a brief description of your toy -->
             <meta-data
